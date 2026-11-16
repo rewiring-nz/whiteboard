@@ -4,9 +4,11 @@ Rewiring Aotearoa's whiteboard of fold-out cards.
 
 - Opens on a chooser showing every board; each board has its own link (`…/whiteboard/#<board id>`).
 - Click a card to unfold its detail; the cards below move out of the way.
-- Drag from the dot on a card's side to another card to connect them.
-- Set a priority from 1 (highest) to 10 on an unfolded card, and switch between your own colours and colour-by-priority.
-- Draw with the marker (M). On an iPad, Apple Pencil draws straight onto the board; fingers pan, pinch to zoom, and never draw once a pencil has been used.
+- Drag from the dot on a card's side to another card to connect them, or let go on empty board to make a new linked card.
+- Paste (or drop) pictures, links and text onto the board. Links appear as short pills; hover to switch one to a preview card (previews come from microlink.io, which is sent the link only when you choose *Show as card*).
+- Emoji button: adds an emoji to the board, or into the text you're typing.
+- Set a priority from 1 (highest) to 10 on an unfolded card. Colours: 12 presets, a custom colour, or *Auto* (follows priority); the toolbar can also switch the whole board to colour-by-priority.
+- Draw with the marker (M). Each drawing becomes an object: click it to select, drag to move, drag the corner to resize. On an iPad, Apple Pencil draws straight onto the board; fingers pan, pinch to zoom, and never draw once a pencil has been used.
 - The **Table** tab shows the same board as a spreadsheet: one row per card, editable both ways, with your own extra columns. Paste rows from Excel or Google Sheets to add cards (pasting never overwrites existing cards). Export to CSV.
 
 ## Two ways to use it
@@ -26,6 +28,7 @@ Board content is **not** in this repo. It lives in the private repo [`rewiring-n
 
 - `boards/<id>.json`: the current state of each board. Every save in the app is a commit, so the commit history is a full backup of every version, including deleted boards.
 - `versions/<id>/…json`: named versions saved from the History panel.
+- `assets/…`: pictures pasted onto boards.
 
 Each browser also keeps a last-resort copy of the boards it has opened, and changes that never reached GitHub are saved on the next visit.
 
@@ -59,6 +62,6 @@ Webflow's page password only hides the Webflow page; the board's own password is
 
 ## Rules for changing the app
 
-- Never remove or rename a field or colour name that saved boards use (cards: title, summary, body, color, open, priority, fields; boards: cards, edges, columns, strokes). New fields need a default so older boards still load.
+- Never remove or rename a field or colour name that saved boards use (cards: kind, title, summary, body, color, open, priority, fields, asset, url, disp, meta, emoji; boards: cards, edges, columns, strokes; strokes: g). New fields need a default so older boards still load.
 - Keep the internal storage names (`foldout-board` IndexedDB, `fb-…` keys, `app: "foldout-board"` in exports). They date from the tool's first name, and offline boards live under them.
 - Back up the data repo (it's git, so just note the current commit) before deploying a change that touches how boards are saved.

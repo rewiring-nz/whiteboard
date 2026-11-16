@@ -17,7 +17,7 @@
   --edge:#7c8a99; --shadow:rgba(27,37,48,.10); --danger:#b42318;
   --t-yellow:#fff3bf; --t-blue:#dce8ff; --t-green:#d6f2e1; --t-pink:#ffdfe7; --t-lilac:#e7e0ff; --t-plain:#ffffff;
   --t-orange:#ffe2c6; --t-red:#ffd3cd; --t-purple:#f1d9f5; --t-sky:#d3f0fb; --t-teal:#cdeee9; --t-grey:#e3e7ec;
-  --p1:#ffc4bc; --p2:#ffd0b8; --p3:#ffdcb3; --p4:#ffe8b0; --p5:#fff2bd; --p6:#eef4c2; --p7:#dbf0cd; --p8:#d0eee0; --p9:#d2e9f4; --p10:#dde5fb;
+  --p1:#ffdedb; --p2:#ffcdbf; --p3:#ffc79a; --p4:#ffd294; --p5:#ffde95; --p6:#ffe9a0; --p7:#fbf0b8; --p8:#eeebd2; --p9:#e5e6e3; --p10:#dfe2e6;
   --m-ink:#1b2530; --m-red:#d93a2b; --m-blue:#2c56c9; --m-green:#1f9d55; --m-orange:#e07b00;
   --card-line:rgba(27,37,48,.12);
   --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
@@ -29,7 +29,7 @@
   --edge:#6f7d8c; --shadow:rgba(0,0,0,.45); --danger:#ff8a80;
   --t-yellow:#3a3420; --t-blue:#1f2b44; --t-green:#1d3428; --t-pink:#3c2430; --t-lilac:#2b2546; --t-plain:#222932;
   --t-orange:#3d2c1c; --t-red:#40211f; --t-purple:#36223c; --t-sky:#1b3340; --t-teal:#183633; --t-grey:#2b313a;
-  --p1:#4d2420; --p2:#4a2a1d; --p3:#45311c; --p4:#41381c; --p5:#3a3420; --p6:#333722; --p7:#263826; --p8:#1e372f; --p9:#1d3340; --p10:#222d45;
+  --p1:#5a3236; --p2:#55302a; --p3:#53361d; --p4:#4f3b1a; --p5:#4b401a; --p6:#45401e; --p7:#3d3b26; --p8:#36362f; --p9:#2f3237; --p10:#2a2e34;
   --m-ink:#e5eaf0; --m-red:#ff6b5e; --m-blue:#7f9dff; --m-green:#4cc38a; --m-orange:#ffa94d;
   --card-line:rgba(255,255,255,.09); color-scheme:dark;
 }}
@@ -39,7 +39,7 @@
   --edge:#6f7d8c; --shadow:rgba(0,0,0,.45); --danger:#ff8a80;
   --t-yellow:#3a3420; --t-blue:#1f2b44; --t-green:#1d3428; --t-pink:#3c2430; --t-lilac:#2b2546; --t-plain:#222932;
   --t-orange:#3d2c1c; --t-red:#40211f; --t-purple:#36223c; --t-sky:#1b3340; --t-teal:#183633; --t-grey:#2b313a;
-  --p1:#4d2420; --p2:#4a2a1d; --p3:#45311c; --p4:#41381c; --p5:#3a3420; --p6:#333722; --p7:#263826; --p8:#1e372f; --p9:#1d3340; --p10:#222d45;
+  --p1:#5a3236; --p2:#55302a; --p3:#53361d; --p4:#4f3b1a; --p5:#4b401a; --p6:#45401e; --p7:#3d3b26; --p8:#36362f; --p9:#2f3237; --p10:#2a2e34;
   --m-ink:#e5eaf0; --m-red:#ff6b5e; --m-blue:#7f9dff; --m-green:#4cc38a; --m-orange:#ffa94d;
   --card-line:rgba(255,255,255,.09); color-scheme:dark;
 }
@@ -182,7 +182,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .pp button:hover{transform:translateY(-1px)}
 .pp button.cur{outline:2px solid var(--ink); outline-offset:1px}
 .pbadge{flex:none; align-self:flex-start; font:600 11px/1 var(--f-body); padding:4px 6px; border-radius:6px; background:var(--pc); border:1px solid var(--card-line); margin-top:1px; font-variant-numeric:tabular-nums}
-.pbadge:empty{display:none}
+.pbadge:empty, .card:not(.open) .pbadge{display:none}
 .plegend{position:absolute; right:max(16px, env(safe-area-inset-right, 0px)); bottom:12px; z-index:5; display:flex; align-items:center; gap:3px; font-size:11.5px; color:var(--muted);
   background:color-mix(in srgb, var(--surface) 88%, transparent); padding:6px 8px; border-radius:8px; border:1px solid var(--line)}
 .plegend i{font-style:normal; width:20px; height:20px; display:grid; place-items:center; border-radius:4px; background:var(--pc); color:var(--ink); font-weight:600; border:1px solid var(--card-line)}
@@ -191,6 +191,61 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 
 /* Marker */
 #inkG path{fill:none; stroke-linecap:round; stroke-linejoin:round}
+#inkG .ink-hit{stroke:transparent; pointer-events:stroke; cursor:move}
+#inkSel .ink-box{fill:none; stroke:var(--accent); pointer-events:none}
+#inkSel .ink-handle{fill:var(--surface); stroke:var(--accent); pointer-events:all; cursor:nwse-resize}
+
+.card.c-custom{--tint:var(--custom)}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .card.c-custom{--tint:color-mix(in srgb, var(--custom) 30%, var(--surface))} }
+:root[data-theme="dark"] .card.c-custom{--tint:color-mix(in srgb, var(--custom) 30%, var(--surface))}
+.cchoices{display:flex; flex-direction:column; gap:6px}
+.cchoices .swm{padding:0}
+.edit .cchoices .swm{display:grid; grid-template-columns:repeat(6, 22px); gap:7px}
+.edit .cchoices .swm button{width:22px; height:22px; border-radius:50%; border:1px solid var(--card-line); padding:0; cursor:pointer}
+.edit .cchoices .swm button.cur{box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--accent)}
+.cextra{display:flex; gap:6px; align-items:center; padding:0 2px}
+.menu .cextra{padding:0 8px 8px}
+.cextra .c-auto, .cextra .c-custom{display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 10px; border-radius:13px; border:1px solid var(--line); background:var(--surface);
+  font:500 12px var(--f-body); color:var(--ink); cursor:pointer; text-transform:none; letter-spacing:0; width:auto}
+.cextra .c-auto{background:linear-gradient(90deg, var(--p10), var(--p5), var(--p1))}
+.cextra .cur{box-shadow:0 0 0 2px var(--accent)}
+.cextra .c-custom input{width:18px; height:18px; padding:0; border:0; border-radius:50%; background:none; cursor:pointer}
+.cextra .c-custom input::-webkit-color-swatch-wrapper{padding:0} .cextra .c-custom input::-webkit-color-swatch{border:1px solid var(--card-line); border-radius:50%}
+
+/* Pasted objects: pictures, links, emoji */
+.card.obj{background:transparent; border:0; box-shadow:none}
+.card.obj.sel, .card.obj.dragging{box-shadow:none}
+.obj > .card-head{display:block; padding:0; border-radius:8px}
+.obj.sel > .card-head, .obj.dragging > .card-head{outline:2px solid var(--accent); outline-offset:3px}
+.k-image > .card-head img{display:block; width:100%; height:auto; border-radius:6px; box-shadow:0 2px 10px -2px var(--shadow); pointer-events:none}
+.img-missing{padding:24px 12px; text-align:center; color:var(--muted); background:var(--surface-2); border:1px dashed var(--line); border-radius:8px; font-size:12px}
+.k-emoji > .card-head{line-height:1; text-align:center}
+.k-emoji .em{display:block; font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.k-link.d-pill > .card-head{display:inline-flex; align-items:center; gap:7px; max-width:340px; padding:4px 12px 4px 4px; border-radius:999px; background:var(--surface);
+  border:1px solid var(--line); box-shadow:0 1px 3px var(--shadow); color:var(--accent); font-size:13px; font-weight:500; white-space:nowrap}
+.k-link.d-pill > .card-head:hover{border-color:var(--accent)}
+.lk-ic{flex:none; width:22px; height:22px; border-radius:50%; background:var(--surface-2); color:var(--muted); display:grid; place-items:center; font:600 11px var(--f-body)}
+.lk-t{overflow:hidden; text-overflow:ellipsis}
+.k-link.d-card > .card-head{display:flex; flex-direction:column; background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:0 2px 12px -4px var(--shadow)}
+.lc-img img{display:block; width:100%; aspect-ratio:1.91/1; object-fit:cover; background:var(--surface-2); pointer-events:none}
+.lc-tx{padding:10px 12px 12px; display:flex; flex-direction:column; gap:3px; min-width:0}
+.lc-site{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.lc-title{font-family:var(--f-display); font-weight:650; font-size:15px; line-height:1.3; overflow-wrap:anywhere}
+.lc-desc{font-size:12.5px; line-height:1.45; color:var(--muted); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+.lc-desc:empty{display:none}
+.lc-url{font-size:12px; color:var(--accent); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.obj > .tools{position:absolute; right:0; bottom:100%; margin-bottom:8px; display:flex; gap:2px; background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:2px;
+  box-shadow:0 4px 14px var(--shadow); opacity:0; pointer-events:none; white-space:nowrap; z-index:4}
+.obj > .tools::after{content:""; position:absolute; left:0; right:0; top:100%; height:10px}
+.obj:hover > .tools, .obj.sel > .tools{opacity:1; pointer-events:auto}
+.obj > .tools button{width:auto; height:26px; padding:0 8px; font-size:12px; font-weight:500; color:var(--ink)}
+.obj > .tools button[data-act="del"]{color:var(--muted)}
+.obj > .tools button[data-act="del"]:hover{color:var(--danger)}
+.k-link.d-pill .resize{display:none}
+.menu.emoji-menu{max-width:min(340px, calc(100vw - 32px))}
+.emg{display:grid; grid-template-columns:repeat(8, 1fr); gap:2px; padding:2px 4px 6px}
+.emg button{font-size:20px; line-height:1; padding:6px 0; border:0; border-radius:6px; background:transparent; cursor:pointer; font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
+.emg button:hover{background:var(--surface-2)}
 .ink-ink{stroke:var(--m-ink)} .ink-red{stroke:var(--m-red)} .ink-blue{stroke:var(--m-blue)} .ink-green{stroke:var(--m-green)} .ink-orange{stroke:var(--m-orange)}
 #inkCatch{position:absolute; inset:0; z-index:8; cursor:crosshair; touch-action:none}
 #inkCatch.erase{cursor:cell}
@@ -390,6 +445,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     </div>
     <div class="sep board-only"></div>
     <div class="grp board-only">
+      <button class="btn icon" id="emojiBtn" title="Emoji" aria-label="Emoji" aria-haspopup="true"><span style="font-size:16px;line-height:1">😊</span></button>
       <button class="btn" id="inkBtn" title="Draw on the board with a marker (M)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.5 2.5l3 3-7 7-3.5.5.5-3.5z"/><path d="M2 14.5c2-1 4 .5 6-.5"/></svg>Marker</button>
       <div class="seg" id="cmode" title="How cards are coloured">
         <button data-cm="custom" class="on">Own colours</button>
@@ -430,6 +486,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
       </defs>
       <g id="inkG"></g>
       <g id="edgeG"></g>
+      <g id="inkSel"></g>
       <path id="tempEdge" d="" marker-end="url(#arrSel)" hidden/>
     </svg>
     <button id="edgeDel" hidden>Remove link</button>
@@ -451,7 +508,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <button class="btn primary" id="inkDone">Done</button>
   </div>
   <div class="plegend" id="plegend" hidden aria-label="Priority colours, 1 is highest">Priority <span>1 = highest</span><i style="--pc:var(--p1)">1</i><i style="--pc:var(--p2)">2</i><i style="--pc:var(--p3)">3</i><i style="--pc:var(--p4)">4</i><i style="--pc:var(--p5)">5</i><i style="--pc:var(--p6)">6</i><i style="--pc:var(--p7)">7</i><i style="--pc:var(--p8)">8</i><i style="--pc:var(--p9)">9</i><i style="--pc:var(--p10)">10</i></div>
-  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll or drag to pan, <b>pinch</b> or <b>Ctrl/⌘ + scroll</b> to zoom · <b>Apple Pencil</b> draws</div>
+  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll or drag to pan, <b>pinch</b> or <b>Ctrl/⌘ + scroll</b> to zoom · <b>Apple Pencil</b> draws · <b>Paste</b> pictures, links or text</div>
   <div class="empty-state" id="emptyState" hidden>
     <div class="empty-card">
       <h2>No boards yet</h2>
@@ -503,6 +560,8 @@ const clientId = uid();
 const COLORS = ["yellow","orange","red","pink","purple","lilac","blue","sky","teal","green","grey","plain"];
 const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const INKS = ["ink","red","blue","green","orange"];
+const KINDS = ["card","image","link","emoji"];               // card = fold-out card; the rest are things pasted or dropped on the board
+const ASSET_ID = /^[A-Za-z0-9_-]{1,40}\.(png|jpg|gif|webp)$/;
 const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
 const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -578,9 +637,14 @@ function sanitizeBoard(o){
   const cards = (Array.isArray(o.cards) ? o.cards : []).filter(c => c && typeof c === "object").slice(0, 500).map(c => {
     let id = (typeof c.id === "string" && SAFE_ID.test(c.id) && !seen.has(c.id)) ? c.id : uid();
     seen.add(id);
-    return { id, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: clamp(Math.round(+c.w || 260), 180, 640),
+    const kind = KINDS.includes(c.kind) ? c.kind : "card";
+    const extra = {};
+    if (kind === "image"){ extra.asset = typeof c.asset === "string" && ASSET_ID.test(c.asset) ? c.asset : ""; }
+    if (kind === "link"){ extra.url = safeUrl(c.url) || "https://example.com"; extra.disp = c.disp === "card" ? "card" : "pill"; extra.meta = cleanMeta(c.meta, extra.url); }
+    if (kind === "emoji"){ extra.emoji = String(c.emoji ?? "").slice(0, 16) || "⭐"; }
+    return { id, kind, ...extra, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: kind === "card" ? clamp(Math.round(+c.w || 260), 180, 640) : clamp(Math.round(+c.w || 200), 24, 1600),
       title: String(c.title ?? "").slice(0, 300), summary: String(c.summary ?? "").slice(0, 1000), body: String(c.body ?? "").slice(0, 40000),
-      color: COLORS.includes(c.color) ? c.color : "plain", open: !!c.open, fields: cleanFields(c.fields), priority: clamp(Math.round(+c.priority || 0), 0, 10) };
+      color: (COLORS.includes(c.color) || c.color === "auto" || /^#[0-9a-f]{6}$/i.test(c.color)) ? String(c.color).toLowerCase() : "plain", open: !!c.open, fields: cleanFields(c.fields), priority: clamp(Math.round(+c.priority || 0), 0, 10) };
   });
   const ids = new Set(cards.map(c => c.id));
   const edges = (Array.isArray(o.edges) ? o.edges : []).filter(e => e && ids.has(e.from) && ids.has(e.to) && e.from !== e.to)
@@ -591,9 +655,23 @@ function sanitizeBoard(o){
   const strokes = (Array.isArray(o.strokes) ? o.strokes : []).filter(k => k && Array.isArray(k.p) && k.p.length >= 2).slice(0, 3000).map(k => {
     const pts = k.p.slice(0, 20000).map(n => Math.round((+n || 0) * 10) / 10);
     if (pts.length % 2) pts.pop();
-    return { id: (typeof k.id === "string" && SAFE_ID.test(k.id)) ? k.id : uid(), c: INKS.includes(k.c) ? k.c : "ink", w: clamp(+k.w || 4, 1, 24), p: pts };
+    const st = { id: (typeof k.id === "string" && SAFE_ID.test(k.id)) ? k.id : uid(), c: INKS.includes(k.c) ? k.c : "ink", w: clamp(Math.round((+k.w || 4) * 10) / 10, 0.5, 60), p: pts };
+    if (typeof k.g === "string" && SAFE_ID.test(k.g)) st.g = k.g;
+    return st;
   });
   return { name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, columns, strokes, updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
+}
+function safeUrl(u){
+  try { const x = new URL(String(u || "").trim()); return (x.protocol === "https:" || x.protocol === "http:") && x.href.length <= 2000 ? x.href : ""; } catch { return ""; }
+}
+function hostOf(u){ try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } }
+function cleanMeta(m, url){
+  m = (m && typeof m === "object") ? m : {};
+  const out = { site: String(m.site ?? hostOf(url)).slice(0, 100) };
+  if (m.title) out.title = String(m.title).slice(0, 300);
+  if (m.desc) out.desc = String(m.desc).slice(0, 600);
+  const img = safeUrl(m.img); if (img && img.startsWith("https:")) out.img = img;
+  return out;
 }
 function cleanFields(f){
   const out = {};
@@ -651,6 +729,56 @@ async function listDir(path){
 }
 const who = () => editorName ? ` (${editorName})` : "";
 
+/* ---------- images: stored as separate files (online: assets/ in the data repo; offline: in this browser) ---------- */
+const assetCache = new Map();
+const MIME = { png: "image/png", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
+async function readB64(path){
+  const r = await gh("GET", `contents/${path}?ref=${encodeURIComponent(GH.branch)}`);
+  if (r.status === 404) return null;
+  if (!r.ok) throw httpErr(r.status);
+  const j = await r.json();
+  if (j.content && j.encoding === "base64") return j.content.replace(/\s/g, "");
+  const b = await gh("GET", `git/blobs/${j.sha}`); if (!b.ok) throw httpErr(b.status);
+  return (await b.json()).content.replace(/\s/g, "");
+}
+async function getAsset(aid){
+  if (!aid) return null;
+  if (assetCache.has(aid)) return assetCache.get(aid);
+  let url = null;
+  try {
+    if (OFFLINE) url = (await kv.get("asset:" + aid)) || null;
+    else { const b64 = await readB64("assets/" + aid); if (b64) url = `data:${MIME[aid.split(".").pop()]};base64,${b64}`; }
+  } catch {}
+  if (url) assetCache.set(aid, url);
+  return url;
+}
+async function putAsset(dataUrl, aid){
+  const m = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/.exec(dataUrl);
+  if (!m) throw new Error("bad image");
+  aid = aid || uid() + "." + (m[2] === "jpeg" ? "jpg" : m[2]);
+  if (OFFLINE) await kv.set("asset:" + aid, dataUrl);
+  else {
+    const r = await queueWrite(() => gh("PUT", `contents/assets/${aid}`, { message: `Add image${who()}`, content: m[3], branch: GH.branch }));
+    if (!r.ok && r.status !== 422) throw httpErr(r.status);   // 422 = already there (re-import)
+  }
+  assetCache.set(aid, dataUrl);
+  return aid;
+}
+function readAsDataURL(blob){ return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); }); }
+/* Shrink big pictures so boards stay quick to load: longest side 1800px, JPEG for photos. */
+async function prepareImage(file){
+  const raw = await readAsDataURL(file);
+  if (file.type === "image/gif"){ if (file.size > 4e6) throw new Error("GIF too large"); return raw; }
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = raw; });
+  const max = 1800, sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const keep = sc === 1 && file.size < 900e3 && /^image\/(png|jpeg|webp)$/.test(file.type);
+  if (keep) return raw;
+  const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * sc); cv.height = Math.round(img.naturalHeight * sc);
+  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  const png = file.type === "image/png" && file.size < 1.5e6;
+  return cv.toDataURL(png ? "image/png" : "image/jpeg", 0.86);
+}
+
 /* ---------- markdown-lite ---------- */
 function esc(s){ return s.replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
 function inline(s){
@@ -699,7 +827,93 @@ const ICON = {
 const ro = new ResizeObserver(() => scheduleLayout());
 const getCard = id => board && board.cards.find(c => c.id === id);
 
+const PORTS = ["t","r","b","l"].map(s => `<button class="port ${s}" data-side="${s}" title="Drag to another card to connect" aria-label="Connect to another card" tabindex="-1"></button>`).join("");
+function makeObjEl(c){
+  const el = document.createElement("div");
+  el.className = "card obj"; el.dataset.id = c.id; el._kind = c.kind;
+  el.innerHTML = `<div class="card-head" role="button" tabindex="0"></div><div class="tools"></div><div class="resize" title="Drag to resize"></div>${PORTS}`;
+  el._head = el.querySelector(".card-head"); el._tools = el.querySelector(".tools");
+  wireCard(el, c.id);
+  el._tools.addEventListener("pointerdown", e => e.stopPropagation());
+  el._tools.addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    e.stopPropagation();
+    const cc = getCard(c.id); if (!cc) return;
+    if (b.dataset.act === "del") deleteCard(cc.id);
+    else if (b.dataset.act === "open") openLink(cc.url);
+    else if (b.dataset.act === "disp"){
+      pushUndo(); cc.disp = cc.disp === "card" ? "pill" : "card";
+      if (cc.disp === "card" && !cc.w || cc.w < 200) cc.w = 300;
+      updateCardEl(el, cc); markDirty();
+      if (cc.disp === "card" && !cc.meta.title) fetchMeta(cc.id);
+    }
+  });
+  return el;
+}
+function shortUrl(u){
+  try { const x = new URL(u); let path = (x.pathname + x.search).replace(/\/$/, ""); if (path.length > 22) path = path.slice(0, 20) + "…"; return x.hostname.replace(/^www\./, "") + path; }
+  catch { return u.slice(0, 40); }
+}
+function openLink(u){ const url = safeUrl(u); if (url) window.open(url, "_blank", "noopener"); }
+function labelOf(c){
+  if (c.kind === "image") return "Image";
+  if (c.kind === "emoji") return c.emoji;
+  if (c.kind === "link") return c.meta.title || shortUrl(c.url);
+  return c.title || "Untitled";
+}
+function updateObjEl(el, c){
+  el.className = `card obj k-${c.kind}` + (c.kind === "link" ? " d-" + c.disp : "") +
+    (selected && selected.type === "card" && selected.id === c.id ? " sel" : "") + (dragId === c.id ? " dragging" : "") + (linkFrom === c.id ? " link-src" : "");
+  el.style.width = (c.kind === "link" && c.disp === "pill") ? "" : c.w + "px";
+  const key = JSON.stringify([c.kind, c.asset, c.url, c.disp, c.meta, c.emoji, c.kind === "emoji" ? c.w : 0]);
+  if (el._key === key) return;
+  el._key = key;
+  const h = el._head, del = `<button data-act="del" title="Remove" aria-label="Remove">✕</button>`;
+  if (c.kind === "image"){
+    h.innerHTML = `<img alt="" draggable="false">`;
+    el._tools.innerHTML = del;
+    const img = h.querySelector("img");
+    getAsset(c.asset).then(src => { if (src) img.src = src; else h.innerHTML = `<div class="img-missing">Image not available here</div>`; });
+  } else if (c.kind === "emoji"){
+    h.innerHTML = `<span class="em"></span>`;
+    const em = h.querySelector(".em"); em.textContent = c.emoji; em.style.fontSize = Math.round(c.w * 0.82) + "px";
+    el._tools.innerHTML = del;
+  } else if (c.kind === "link"){
+    const open = `<button data-act="open" title="Open link" aria-label="Open link">Open ↗</button>`;
+    if (c.disp === "pill"){
+      h.innerHTML = `<span class="lk-ic"></span><span class="lk-t"></span>`;
+      h.querySelector(".lk-ic").textContent = (hostOf(c.url)[0] || "?").toUpperCase();
+      h.querySelector(".lk-t").textContent = shortUrl(c.url);
+      el._tools.innerHTML = `<button data-act="disp" title="Show as a preview card">Show as card</button>${open}${del}`;
+    } else {
+      h.innerHTML = (c.meta.img ? `<div class="lc-img"><img alt="" draggable="false" referrerpolicy="no-referrer"></div>` : "") +
+        `<div class="lc-tx"><div class="lc-site"></div><div class="lc-title"></div><div class="lc-desc"></div><div class="lc-url"></div></div>`;
+      if (c.meta.img){ const im = h.querySelector(".lc-img img"); im.src = c.meta.img; im.onerror = () => im.parentNode.remove(); }
+      h.querySelector(".lc-site").textContent = c.meta.site || hostOf(c.url);
+      h.querySelector(".lc-title").textContent = c.meta.title || shortUrl(c.url);
+      h.querySelector(".lc-desc").textContent = c.meta.desc || "";
+      h.querySelector(".lc-url").textContent = c.url;
+      el._tools.innerHTML = `<button data-act="disp" title="Show as a short link">Show as link</button>${open}${del}`;
+    }
+    h.title = c.url;
+  }
+}
+/* Link previews come from Microlink (microlink.io), which is sent the link only when someone chooses "Show as card". */
+async function fetchMeta(id){
+  const c0 = getCard(id); if (!c0) return;
+  try {
+    const r = await fetch("https://api.microlink.io/?url=" + encodeURIComponent(c0.url));
+    const j = await r.json();
+    if (j.status !== "success") throw 0;
+    const c = getCard(id); if (!c) return;
+    c.meta = cleanMeta({ title: j.data.title, desc: j.data.description, img: j.data.image && j.data.image.url, site: j.data.publisher || hostOf(c.url) }, c.url);
+    const el = els.get(id); if (el) updateCardEl(el, c);
+    markDirty();
+  } catch { toast("Couldn't get a preview for that link, so it shows the address instead."); }
+}
+
 function makeCardEl(c){
+  if (c.kind && c.kind !== "card") return makeObjEl(c);
   const el = document.createElement("div");
   el.className = "card";
   el.dataset.id = c.id;
@@ -719,7 +933,9 @@ function makeCardEl(c){
 }
 
 function updateCardEl(el, c){
+  if (el._kind) return updateObjEl(el, c);
   const editing = editingId === c.id;
+  if (c.color.startsWith("#")) el.style.setProperty("--custom", c.color); else el.style.removeProperty("--custom");
   el.className = `card ${tintClass(c)}` + ((c.open || editing) ? " open" : "") + (editing ? " editing" : "") +
     (selected && selected.type === "card" && selected.id === c.id ? " sel" : "") + (dragId === c.id ? " dragging" : "") +
     (linkFrom === c.id ? " link-src" : "") + (!c.body.trim() ? " empty-body" : "");
@@ -753,7 +969,7 @@ function buildEditor(el, c){
     ${(board.columns || []).map(col => `<label>${esc(col.name)}<input id="fx-${id}-${col.id}" data-col="${col.id}" maxlength="5000"></label>`).join("")}
     <label><div>Detail <span>(shown when unfolded)</span></div><textarea id="bo-${id}"></textarea></label>
     <div class="hint">Start a line with <code>##</code> for a section that folds open on its own, <code>-</code> for bullets, <code>#</code> for a small heading. Use <code>**bold**</code> and <code>[link](https://…)</code>.</div>
-    <div class="swatches" role="group" aria-label="Card colour">${COLORS.map(k => `<button class="sw" data-c="${k}" style="background:var(--t-${k})" title="${k}" aria-label="${k}"></button>`).join("")}</div>
+    <div class="swatches" role="group" aria-label="Card colour"></div>
     <div class="edit-actions"><button class="btn del">Delete card</button><button class="btn primary done">Done</button></div></div>`;
   const ti = el._slot.querySelector("#ti-" + id), su = el._slot.querySelector("#su-" + id), bo = el._slot.querySelector("#bo-" + id);
   ti.value = c.title; su.value = c.summary; bo.value = c.body;
@@ -767,9 +983,11 @@ function buildEditor(el, c){
   ti.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; cc.title = ti.value; updateCardEl(el, cc); markDirty(); });
   su.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; cc.summary = su.value; updateCardEl(el, cc); markDirty(); });
   bo.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; cc.body = bo.value; size(); markDirty(); });
-  const markSw = () => el._slot.querySelectorAll(".sw").forEach(b => b.classList.toggle("cur", b.dataset.c === getCard(id)?.color));
-  el._slot.querySelectorAll(".sw").forEach(b => b.addEventListener("click", () => { touch(); const cc = getCard(id); cc.color = b.dataset.c; ls.set("fb-color", cc.color); markSw(); updateCardEl(el, cc); markDirty(); }));
-  markSw();
+  const swHost = el._slot.querySelector(".swatches");
+  const drawSw = () => swHost.replaceChildren(colourChoices(getCard(id)?.color || "plain", k => {
+    touch(); const cc = getCard(id); if (!cc) return; cc.color = k; ls.set("fb-color", k); drawSw(); updateCardEl(el, cc); markDirty();
+  }));
+  drawSw();
   el._slot.querySelector(".done").addEventListener("click", () => stopEditing());
   el._slot.querySelector(".del").addEventListener("click", () => deleteCard(id));
   [ti, su].forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); stopEditing(); } }));
@@ -817,7 +1035,7 @@ function scheduleLayout(){ if (!layoutQueued){ layoutQueued = true; requestAnima
 function layout(){
   layoutQueued = false;
   if (!board) return;
-  const items = board.cards.map(c => { const el = els.get(c.id); return el && { c, el, h: el.offsetHeight, ch: el._head.offsetHeight + 2, w: el.offsetWidth }; }).filter(Boolean);
+  const items = board.cards.map(c => { const el = els.get(c.id); return el && { c, el, h: el.offsetHeight, ch: el._kind === "link" ? Math.min(el.offsetHeight, 32) : el._kind ? el.offsetHeight : el._head.offsetHeight + 2, w: el.offsetWidth }; }).filter(Boolean);
   items.sort((a, b) => a.c.y - b.c.y || (a.c.x - b.c.x) || (a.c.id < b.c.id ? -1 : 1));
   const placed = [];
   for (const it of items){
@@ -878,7 +1096,7 @@ function deleteEdge(id){ pushUndo(); board.edges = board.edges.filter(e => e.id 
 function select(s){
   selected = s;
   for (const [id, el] of els) el.classList.toggle("sel", !!(s && s.type === "card" && s.id === id));
-  drawEdges();
+  drawEdges(); drawInkSel();
 }
 function setLinkMode(on, from = null){
   linkMode = on; linkFrom = on ? from : null;
@@ -901,9 +1119,10 @@ function wireCard(el, id){
     e.stopPropagation();
     if (linkMode){ e.preventDefault(); handleLinkClick(id); return; }
     const c = getCard(id); if (!c) return;
+    const wasSel = !!(selected && selected.type === "card" && selected.id === id);
     select({ type: "card", id });
     const rp = renderPos.get(id);
-    const st = { px: e.clientX, py: e.clientY, x: c.x, y: rp ? rp.y : c.y, moved: false };
+    const st = { px: e.clientX, py: e.clientY, x: c.x, y: rp ? rp.y : c.y, moved: false, wasSel };
     head.setPointerCapture(e.pointerId);
     const move = ev => {
       if (!st.moved){
@@ -919,15 +1138,22 @@ function wireCard(el, id){
     const up = () => {
       head.removeEventListener("pointermove", move); head.removeEventListener("pointerup", up); head.removeEventListener("pointercancel", up);
       if (st.moved){ dragId = null; renderCards(); markDirty(); }
-      else if (editingId !== id) toggleCard(id);
+      else if (c.kind === "link"){ if (st.wasSel || e.pointerType !== "touch") openLink(c.url); }   // on touch: first tap selects, second opens
+      else if (c.kind === "card" && editingId !== id) toggleCard(id);
     };
     head.addEventListener("pointermove", move); head.addEventListener("pointerup", up); head.addEventListener("pointercancel", up);
   });
   head.addEventListener("keydown", e => {
     if (e.target !== head) return;
-    if (e.key === "Enter" || e.key === " "){ e.preventDefault(); toggleCard(id); }
+    if (e.key === "Enter" || e.key === " "){ e.preventDefault(); const c = getCard(id); if (c && c.kind === "link") openLink(c.url); else toggleCard(id); }
   });
-  head.addEventListener("dblclick", e => { if (!e.target.closest("button")){ e.stopPropagation(); startEditing(id, true); } });
+  head.addEventListener("dblclick", e => { if (!e.target.closest("button") && !el._kind){ e.stopPropagation(); startEditing(id, true); } });
+  if (el._kind){
+    el.addEventListener("dblclick", e => e.stopPropagation());
+    el.querySelectorAll(".port").forEach(p => p.addEventListener("pointerdown", e => startConnect(e, id, p)));
+    wireResize(el, id);
+    return;
+  }
   el.querySelector(".t-edit").addEventListener("click", e => { e.stopPropagation(); editingId === id ? stopEditing() : startEditing(id, false); });
   el.querySelector(".t-link").addEventListener("click", e => { e.stopPropagation(); setLinkMode(true, id); });
   el.querySelector(".wrap").addEventListener("pointerdown", e => {
@@ -938,13 +1164,17 @@ function wireCard(el, id){
   el.addEventListener("dblclick", e => e.stopPropagation());
   el._slot.addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b){ e.stopPropagation(); setPriority(id, +b.dataset.p); } });
   el.querySelectorAll(".port").forEach(p => p.addEventListener("pointerdown", e => startConnect(e, id, p)));
+  wireResize(el, id);
+}
+function wireResize(el, id){
   const rz = el.querySelector(".resize");
   rz.addEventListener("pointerdown", e => {
     e.stopPropagation(); e.preventDefault();
     const c = getCard(id); if (!c) return;
     const st = { px: e.clientX, w: c.w, moved: false };
     rz.setPointerCapture(e.pointerId);
-    const move = ev => { if (!st.moved){ st.moved = true; pushUndo(); } c.w = clamp(Math.round(st.w + (ev.clientX - st.px) / view.s), 180, 640); el.style.width = c.w + "px"; };
+    const [lo, hi] = c.kind === "card" ? [180, 640] : [24, 1600];
+    const move = ev => { if (!st.moved){ st.moved = true; pushUndo(); } c.w = clamp(Math.round(st.w + (ev.clientX - st.px) / view.s), lo, hi); if (el._kind) updateCardEl(el, c); else el.style.width = c.w + "px"; };
     const up = () => { rz.removeEventListener("pointermove", move); rz.removeEventListener("pointerup", up); if (st.moved) markDirty(); };
     rz.addEventListener("pointermove", move); rz.addEventListener("pointerup", up);
   });
@@ -969,9 +1199,11 @@ function startConnect(e, id, port){
     target = t;
     if (target) els.get(target)?.classList.add("drop-target");
   };
+  let end = null;
   const move = ev => {
     const R = vp.getBoundingClientRect();
     const x = (ev.clientX - R.left - view.x) / view.s, y = (ev.clientY - R.top - view.y) / view.s;
+    end = { x, y, far: Math.hypot(x - sx, y - sy) * view.s > 40 };
     temp.setAttribute("d", `M${sx.toFixed(1)} ${sy.toFixed(1)}L${x.toFixed(1)} ${y.toFixed(1)}`);
     temp.hidden = false;
     const hit = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(".card");
@@ -982,6 +1214,17 @@ function startConnect(e, id, port){
     vp.classList.remove("connecting"); temp.hidden = true; temp.setAttribute("d", "");
     const t = target; setTarget(null);
     if (t) addEdge(id, t);
+    else if (end && end.far && board){
+      // Let go on empty board: make a new card there, linked from this one, ready to type into.
+      const from = getCard(id);
+      const color = ls.get("fb-color", "yellow");
+      pushUndo();
+      const c = sanitizeBoard({ cards: [{ id: uid(), kind: "card", x: end.x - 130, y: end.y - 22, w: 260, title: "New topic", color: (COLORS.includes(color) || color === "auto" || /^#[0-9a-f]{6}$/.test(color)) ? color : (from && from.color) || "yellow", open: true }] }).cards[0];
+      board.cards.push(c);
+      board.edges.push({ id: uid(), from: id, to: c.id });
+      markDirty();
+      startEditing(c.id, true);
+    }
   };
   port.addEventListener("pointermove", move); port.addEventListener("pointerup", up); port.addEventListener("pointercancel", up);
 }
@@ -998,7 +1241,7 @@ function addCardAt(x, y){
   if (!board) return;
   pushUndo();
   const color = ls.get("fb-color", "yellow");
-  const c = { id: uid(), x: Math.round(x), y: Math.round(y), w: 260, title: "New topic", summary: "", body: "", color: COLORS.includes(color) ? color : "yellow", open: true, fields: {}, priority: 0 };
+  const c = { id: uid(), x: Math.round(x), y: Math.round(y), w: 260, title: "New topic", summary: "", body: "", color: (COLORS.includes(color) || color === "auto" || /^#[0-9a-f]{6}$/.test(color)) ? color : "yellow", open: true, fields: {}, priority: 0, kind: "card" };
   board.cards.push(c); markDirty();
   startEditing(c.id, true);
 }
@@ -1014,7 +1257,7 @@ function deleteCard(id){
   board.edges = board.edges.filter(e => e.from !== id && e.to !== id);
   if (editingId === id) editingId = null;
   selected = null; markDirty(); renderCards();
-  toast(`Deleted “${(c && c.title) || "card"}”. Undo with Ctrl/⌘ Z.`);
+  toast(`Deleted “${c ? labelOf(c) : "card"}”. Undo with Ctrl/⌘ Z.`);
 }
 
 /* ---------- undo ---------- */
@@ -1031,6 +1274,7 @@ function applyView(){
   vp.style.backgroundPosition = `${view.x}px ${view.y}px`;
   vp.style.backgroundSize = `${24 * view.s}px ${24 * view.s}px`;
   $("#zoomLabel").textContent = Math.round(view.s * 100) + "%";
+  if (selected && selected.type === "ink") drawInkSel();
   clearTimeout(applyView.t);
   applyView.t = setTimeout(() => { if (boardId) ls.set("fb-view-" + boardId, view); }, 400);
 }
@@ -1185,11 +1429,19 @@ async function localSave(){
   }
 }
 function exportPayload(list){ return { app: "foldout-board", v: 1, exportedAt: new Date().toISOString(), boards: list.map(b => ({ name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [] })) }; }
+/* Exports and the linked file carry the boards' pictures too, so nothing is lost when moving boards around. */
+async function exportPayloadFull(list){
+  const out = exportPayload(list), assets = {};
+  for (const b of list) for (const c of b.cards) if (c.kind === "image" && c.asset && !assets[c.asset]){ const u = await getAsset(c.asset); if (u) assets[c.asset] = u; }
+  if (Object.keys(assets).length) out.assets = assets;
+  return out;
+}
 async function writeLinkedFile(){
   if (!fileHandle || !fileOk) return;
   try {
+    const data = JSON.stringify(await exportPayloadFull(Object.values(boardData)), null, 2);
     const w = await fileHandle.createWritable();
-    await w.write(JSON.stringify(exportPayload(Object.values(boardData)), null, 2));
+    await w.write(data);
     await w.close();
   } catch { fileOk = false; fileBanner(); }
 }
@@ -1354,7 +1606,7 @@ function ago(t){
   if (s < 60) return "just now"; if (s < 3600) return Math.round(s / 60) + "m ago"; if (s < 86400) return Math.round(s / 3600) + "h ago";
   return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
-document.addEventListener("pointerdown", e => { if (menuEl && !menuEl.contains(e.target) && !e.target.closest("#boardsBtn,#moreBtn")) closeMenu(); });
+document.addEventListener("pointerdown", e => { if (menuEl && !menuEl.contains(e.target) && !e.target.closest("#boardsBtn,#moreBtn,#emojiBtn")) closeMenu(); });
 
 function buildBoardsMenu(m){
   const ids = Object.keys(boardData).sort((a, b) => boardData[b].updatedAt - boardData[a].updatedAt);
@@ -1420,7 +1672,7 @@ $("#moreBtn").addEventListener("click", e => {
 const slug = s => (s || "board").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "board";
 async function exportBoards(list, name){
   if (dirty) await flush();
-  download(name + ".json", JSON.stringify(exportPayload(list), null, 2), "application/json");
+  download(name + ".json", JSON.stringify(await exportPayloadFull(list), null, 2), "application/json");
 }
 async function downloadOffline(){
   try {
@@ -1443,6 +1695,8 @@ $("#importFile").addEventListener("change", e => {
       const o = JSON.parse(r.result);
       const list = Array.isArray(o.boards) ? o.boards : (Array.isArray(o.cards) ? [o] : null);
       if (!list || !list.length) throw new Error("no boards");
+      if (o.assets && typeof o.assets === "object")
+        for (const [aid, u] of Object.entries(o.assets)) if (ASSET_ID.test(aid) && typeof u === "string" && !assetCache.has(aid)){ try { await putAsset(u, aid); } catch {} }
       let first = null;
       for (const b of list){ const id = await createBoard(b); first = first || id; }
       if (first) openBoard(first);
@@ -1589,7 +1843,27 @@ async function loadLocalHistory(list, id){
 
 /* ---------- priority + colour mode ---------- */
 let colorMode = ls.get("fb-cmode", "custom") === "priority" ? "priority" : "custom";
-function tintClass(c){ return colorMode === "priority" ? (c.priority ? "c-p" + c.priority : "c-plain") : "c-" + c.color; }
+// "auto" = the card takes its colour from its priority; "#rrggbb" = a custom colour.
+function tintClass(c){
+  if (colorMode === "priority" || c.color === "auto") return c.priority ? "c-p" + c.priority : "c-plain";
+  return c.color.startsWith("#") ? "c-custom" : "c-" + c.color;
+}
+function tintVar(c){
+  if (colorMode === "priority" || c.color === "auto") return c.priority ? `var(--p${c.priority})` : "var(--t-plain)";
+  return c.color.startsWith("#") ? c.color : `var(--t-${c.color})`;
+}
+function colourChoices(cur, onPick){
+  const wrap = document.createElement("div"); wrap.className = "cchoices";
+  const g = document.createElement("div"); g.className = "swm";
+  COLORS.forEach(k => { const b = document.createElement("button"); b.type = "button"; b.style.background = `var(--t-${k})`; b.title = k; b.setAttribute("aria-label", k); if (k === cur) b.className = "cur"; b.onclick = () => onPick(k); g.appendChild(b); });
+  const x = document.createElement("div"); x.className = "cextra";
+  x.innerHTML = `<button type="button" class="c-auto${cur === "auto" ? " cur" : ""}" title="Colour follows the card's priority">Auto</button><label class="c-custom${cur.startsWith("#") ? " cur" : ""}" title="Pick any colour"><input type="color" aria-label="Custom colour"><span>Custom</span></label>`;
+  x.querySelector(".c-auto").onclick = () => onPick("auto");
+  const inp = x.querySelector("input"); inp.value = cur.startsWith("#") ? cur : "#c9e4ff";
+  inp.addEventListener("change", () => onPick(inp.value.toLowerCase()));
+  wrap.append(g, x);
+  return wrap;
+}
 function prioHTML(p){
   return `<div class="prow"><span>Priority</span><div class="pp" role="group" aria-label="Priority, 1 is highest">` +
     Array.from({ length: 10 }, (_, i) => `<button type="button" data-p="${i + 1}" class="${p === i + 1 ? "cur" : ""}" style="--pc:var(--p${i + 1})" aria-pressed="${p === i + 1}" title="${i === 0 ? "1: highest" : i === 9 ? "10: lowest" : i + 1}">${i + 1}</button>`).join("") + `</div></div>`;
@@ -1622,10 +1896,55 @@ function inkPath(p){
   for (let i = 2; i < p.length - 2; i += 2) d += `Q${p[i]} ${p[i + 1]} ${((p[i] + p[i + 2]) / 2).toFixed(1)} ${((p[i + 1] + p[i + 3]) / 2).toFixed(1)}`;
   return d + `L${p[p.length - 2]} ${p[p.length - 1]}`;
 }
+/* Each drawing is an object: lines drawn within a couple of seconds of each other form one group
+   (a word, a sketch). Click a drawing to select it, drag to move it, drag its corner to resize. */
+const gkey = k => k.g || k.id;
 function drawInk(){
-  if (!board){ inkG.innerHTML = ""; return; }
-  inkG.innerHTML = board.strokes.map(k => `<path class="ink-${k.c}" stroke-width="${k.w}" d="${inkPath(k.p)}"/>`).join("");
+  if (!board){ inkG.innerHTML = ""; drawInkSel(); return; }
+  inkG.innerHTML = board.strokes.map(k => `<path class="ink-${k.c}" stroke-width="${k.w}" d="${inkPath(k.p)}"/>`).join("") +
+    (inkMode ? "" : board.strokes.map(k => `<path class="ink-hit" data-g="${gkey(k)}" stroke-width="${Math.max(k.w + 12, 16)}" d="${inkPath(k.p)}"/>`).join(""));
+  drawInkSel();
 }
+function groupBox(g){
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const k of board.strokes) if (gkey(k) === g){ const h = k.w / 2; for (let i = 0; i < k.p.length; i += 2){ x0 = Math.min(x0, k.p[i] - h); x1 = Math.max(x1, k.p[i] + h); y0 = Math.min(y0, k.p[i + 1] - h); y1 = Math.max(y1, k.p[i + 1] + h); } }
+  return isFinite(x0) ? { x: x0, y: y0, w: Math.max(x1 - x0, 1), h: Math.max(y1 - y0, 1) } : null;
+}
+function drawInkSel(){
+  const sg = $("#inkSel");
+  const b = board && selected && selected.type === "ink" ? groupBox(selected.id) : null;
+  if (!b){ sg.innerHTML = ""; return; }
+  const pad = 6 / view.s, r = 7 / view.s;
+  sg.innerHTML = `<rect class="ink-box" x="${b.x - pad}" y="${b.y - pad}" width="${b.w + pad * 2}" height="${b.h + pad * 2}" style="stroke-width:${1.5 / view.s};stroke-dasharray:${5 / view.s} ${4 / view.s}"/>` +
+    `<circle class="ink-handle" cx="${b.x + b.w + pad}" cy="${b.y + b.h + pad}" r="${r}" style="stroke-width:${2 / view.s}"/>`;
+}
+function inkGroupPointer(e, g, scaling){
+  e.stopPropagation(); e.preventDefault();
+  if (linkMode) setLinkMode(false);
+  if (editingId) stopEditing();
+  select({ type: "ink", id: g });
+  const strokes = board.strokes.filter(k => gkey(k) === g);
+  const orig = strokes.map(k => ({ p: k.p.slice(), w: k.w }));
+  const box = groupBox(g);
+  const t = e.currentTarget || e.target;
+  try { t.setPointerCapture(e.pointerId); } catch {}
+  const sx = e.clientX, sy = e.clientY; let moved = false;
+  const move = ev => {
+    const dx = (ev.clientX - sx) / view.s, dy = (ev.clientY - sy) / view.s;
+    if (!moved){ if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 3) return; moved = true; pushUndo(); }
+    if (scaling){
+      const f = clamp(Math.max((box.w + dx) / box.w, (box.h + dy) / box.h), 0.1, 20);
+      strokes.forEach((k, i) => { k.p = orig[i].p.map((v, j) => +((j % 2 ? box.y + (v - box.y) * f : box.x + (v - box.x) * f)).toFixed(1)); k.w = clamp(+(orig[i].w * f).toFixed(1), 0.5, 60); });
+    } else strokes.forEach((k, i) => { k.p = orig[i].p.map((v, j) => +(v + (j % 2 ? dy : dx)).toFixed(1)); });
+    drawInk();
+  };
+  const up = () => { t.removeEventListener("pointermove", move); t.removeEventListener("pointerup", up); t.removeEventListener("pointercancel", up); if (moved) markDirty(); };
+  t.addEventListener("pointermove", move); t.addEventListener("pointerup", up); t.addEventListener("pointercancel", up);
+}
+inkG.addEventListener("pointerdown", e => { const h = e.target.closest(".ink-hit"); if (h && e.button === 0) inkGroupPointer(e, h.dataset.g, false); });
+$("#inkSel").addEventListener("pointerdown", e => { if (e.target.closest(".ink-handle") && selected && selected.type === "ink") inkGroupPointer(e, selected.id, true); });
+function deleteInkGroup(g){ pushUndo(); board.strokes = board.strokes.filter(k => gkey(k) !== g); selected = null; drawInk(); markDirty(); }
+let lastStrokeEnd = 0, lastGroup = null;
 function strokeHit(k, x, y, r){
   const rr = r + k.w / 2, p = k.p;
   for (let i = 0; i < p.length; i += 2){
@@ -1648,6 +1967,7 @@ function setInk(on){
   inkMode = on;
   $("#inkBtn").classList.toggle("on", on);
   inkCatch.hidden = !on; $("#inkBar").hidden = !on;
+  drawInk();
   if (on){ if (linkMode) setLinkMode(false); if (editingId) stopEditing(); select(null); updateInkBar(); }
 }
 $("#inkBtn").addEventListener("click", () => setInk(!inkMode));
@@ -1690,6 +2010,8 @@ function beginInk(e, el){
     pushUndo();
     const [x0, y0] = toW(e);
     const k = { id: uid(), c: inkColor, w: inkW, p: [+x0.toFixed(1), +y0.toFixed(1)] };
+    k.g = (Date.now() - lastStrokeEnd < 1800 && lastGroup) ? lastGroup : k.id;   // quick successive lines become one drawing
+    lastGroup = k.g;
     board.strokes.push(k); activeStroke = k;
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("class", "ink-" + k.c); path.setAttribute("stroke-width", k.w); path.setAttribute("d", inkPath(k.p));
@@ -1703,7 +2025,7 @@ function beginInk(e, el){
       }
       path.setAttribute("d", inkPath(k.p));
     };
-    done = () => { if (activeStroke === k){ activeStroke = null; markDirty(); } };
+    done = () => { if (activeStroke === k){ activeStroke = null; lastStrokeEnd = Date.now(); markDirty(); } };
   }
   move(e);
   const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); done(); };
@@ -1723,13 +2045,13 @@ function setVal(c, k, v){
   else c[k] = k === "body" ? v : v.replace(/\n+/g, " ");
 }
 function tableRows(){
-  const rows = board.cards.slice();
+  const rows = board.cards.filter(c => c.kind === "card");
   if (!tSort.key) return rows.sort((a, b) => (a.x < 300 ? 0 : 1) - (b.x < 300 ? 0 : 1) || a.y - b.y || a.x - b.x);
   const k = tSort.key, val = c => k === "color" ? COLORS.indexOf(c.color) : k === "priority" ? (c.priority || 99) : getVal(c, k);
   return rows.sort((a, b) => { const x = val(a), y = val(b); return (typeof x === "number" ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" })) * tSort.dir; });
 }
 function linkMap(){
-  const titles = new Map(board.cards.map(c => [c.id, c.title || "Untitled"]));
+  const titles = new Map(board.cards.map(c => [c.id, labelOf(c)]));
   const links = {};
   for (const e of board.edges){ (links[e.from] ||= []).push(titles.get(e.to)); (links[e.to] ||= []).push(titles.get(e.from)); }
   return links;
@@ -1756,7 +2078,7 @@ function renderTable(){
   for (const c of tableRows()){
     const tr = document.createElement("tr"); tr.dataset.id = c.id;
     const tdc = document.createElement("td"); tdc.className = "k-color";
-    tdc.innerHTML = `<button style="background:var(--t-${c.color})" title="Colour: ${c.color}" aria-label="Change colour"></button>`; tr.appendChild(tdc);
+    tdc.innerHTML = `<button title="Colour: ${esc(c.color)}" aria-label="Change colour"></button>`; tdc.firstChild.style.background = tintVar(c); tr.appendChild(tdc);
     for (const col of cols){
       const td = document.createElement("td"); td.className = col.cls;
       const d = document.createElement("div"); d.className = "cell"; setEditable(d); d.dataset.k = col.key; if (col.ph) d.dataset.ph = col.ph;
@@ -1792,7 +2114,7 @@ function newRowCard(){
   let y = 40;
   for (const c of board.cards) if (c.x < 300) y = Math.max(y, c.y + 110);
   const color = ls.get("fb-color", "yellow");
-  const c = { id: uid(), x: 40, y, w: 260, title: "", summary: "", body: "", color: COLORS.includes(color) ? color : "yellow", open: false, fields: {}, priority: 0 };
+  const c = { id: uid(), kind: "card", x: 40, y, w: 260, title: "", summary: "", body: "", color: (COLORS.includes(color) || color === "auto" || /^#[0-9a-f]{6}$/.test(color)) ? color : "yellow", open: false, fields: {}, priority: 0 };
   board.cards.push(c);
   return c;
 }
@@ -1876,16 +2198,7 @@ tvBody.addEventListener("click", e => {
   const cb = e.target.closest(".k-color button");
   if (cb){
     const c = getCard(tr.dataset.id); if (!c) return;
-    openMenu(cb, m => {
-      const g = document.createElement("div"); g.className = "swm";
-      COLORS.forEach(k => {
-        const b = document.createElement("button"); b.style.background = `var(--t-${k})`; b.title = k; b.setAttribute("aria-label", k);
-        if (k === c.color) b.className = "cur";
-        b.onclick = () => { closeMenu(); pushUndo(); c.color = k; ls.set("fb-color", k); markDirty(); renderTable(); };
-        g.appendChild(b);
-      });
-      m.appendChild(g);
-    });
+    openMenu(cb, m => m.appendChild(colourChoices(c.color, k => { closeMenu(); pushUndo(); c.color = k; ls.set("fb-color", k); markDirty(); renderTable(); })));
   }
 });
 function promptDialog(title, value, okLabel, onOk){
@@ -1938,6 +2251,107 @@ function setMode(m){
 $("#vBoard").addEventListener("click", () => setMode("board"));
 $("#vTable").addEventListener("click", () => setMode("table"));
 
+/* ---------- paste and drop: pictures, links and text onto the board ---------- */
+let lastPtr = null;
+vp.addEventListener("pointermove", e => { lastPtr = { x: e.clientX, y: e.clientY, t: Date.now() }; });
+function dropPoint(cx, cy){
+  const R = vp.getBoundingClientRect();
+  if (cx == null){ if (lastPtr && Date.now() - lastPtr.t < 8000 && lastPtr.x > R.left && lastPtr.y > R.top){ cx = lastPtr.x; cy = lastPtr.y; } else { cx = R.left + R.width / 2; cy = R.top + R.height / 2.5; } }
+  return { x: Math.round((cx - R.left - view.x) / view.s), y: Math.round((cy - R.top - view.y) / view.s) };
+}
+let pasteChain = null;   // where the next paste goes, so several pastes in a row stack instead of covering each other
+function placeFor(w, at){
+  if (at) return { x: at.x - w / 2, y: at.y - 20 };
+  if (pasteChain && Date.now() - pasteChain.t < 120000 && pasteChain.ptr === (lastPtr ? lastPtr.t : 0)) return { x: pasteChain.x, y: pasteChain.bottom + 18 };
+  const p = dropPoint(); return { x: p.x - w / 2, y: p.y - 20 };
+}
+function chainAfter(c, h){ pasteChain = { x: c.x, bottom: c.y + h, t: Date.now(), ptr: lastPtr ? lastPtr.t : 0 }; }
+function addObject(o, h){
+  pushUndo();
+  const c = sanitizeBoard({ cards: [{ id: uid(), ...o }] }).cards[0];
+  board.cards.push(c); markDirty(); renderCards(); select({ type: "card", id: c.id });
+  const el = els.get(c.id);
+  chainAfter(c, h || (el ? el.offsetHeight : 40));
+  return c;
+}
+async function addImageFile(file, at){
+  if (!board) return;
+  toast("Adding picture…");
+  try {
+    const url = await prepareImage(file);
+    const aid = await putAsset(url);
+    const img = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = url; });
+    const w = img ? Math.min(420, img.naturalWidth) : 320, h = img ? Math.round(w * img.naturalHeight / img.naturalWidth) : 240;
+    const pos = placeFor(w, at);
+    addObject({ kind: "image", asset: aid, x: pos.x, y: pos.y, w }, h);
+    toast("Picture added.");
+  } catch (e){ toast(e.message === "GIF too large" ? "That GIF is over 4 MB. Try a smaller one." : "Couldn't add that picture. Try again."); }
+}
+function addLink(url, at){
+  const u = safeUrl(url); if (!u || !board) return;
+  const pos = placeFor(200, at);
+  addObject({ kind: "link", url: u, disp: "pill", meta: { site: hostOf(u) }, x: pos.x, y: pos.y, w: 300 });
+}
+function addTextCard(text, at){
+  if (!board) return;
+  const pos = placeFor(260, at);
+  const lines = text.replace(/\r/g, "").split("\n");
+  const title = lines.shift().slice(0, 120);
+  pushUndo();
+  const c = sanitizeBoard({ cards: [{ id: uid(), kind: "card", x: pos.x, y: pos.y, w: 260, title, body: lines.join("\n").trim(), color: ls.get("fb-color", "yellow"), open: false }] }).cards[0];
+  board.cards.push(c); markDirty(); renderCards();
+  const el = els.get(c.id); chainAfter(c, el ? el.offsetHeight : 60);
+}
+const isUrl = t => /^https?:\/\/\S+$/i.test(t);
+document.addEventListener("paste", e => {
+  if (!board || mode !== "board" || !picker.hidden || !GH && !OFFLINE) return;
+  if (e.target.closest && e.target.closest("input,textarea,[contenteditable],.dialog")) return;
+  const items = [...((e.clipboardData && e.clipboardData.items) || [])];
+  const fileItem = items.find(i => i.kind === "file" && i.type.startsWith("image/"));
+  if (fileItem){ e.preventDefault(); addImageFile(fileItem.getAsFile()); return; }
+  const text = ((e.clipboardData && e.clipboardData.getData("text/plain")) || "").trim();
+  if (!text) return;
+  e.preventDefault();
+  if (isUrl(text)) addLink(text); else addTextCard(text);
+});
+vp.addEventListener("dragover", e => { if (board && e.dataTransfer && [...e.dataTransfer.types].some(t => t === "Files" || t === "text/uri-list" || t === "text/plain")){ e.preventDefault(); e.dataTransfer.dropEffect = "copy"; } });
+vp.addEventListener("drop", e => {
+  if (!board || !e.dataTransfer) return;
+  e.preventDefault();
+  const at = dropPoint(e.clientX, e.clientY);
+  const files = [...e.dataTransfer.files].filter(f => f.type.startsWith("image/"));
+  if (files.length){ files.forEach((f, i) => addImageFile(f, { x: at.x + i * 30, y: at.y + i * 30 })); return; }
+  const t = (e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain") || "").split("\n").find(l => l.trim() && !l.startsWith("#"));
+  if (t && isUrl(t.trim())) addLink(t.trim(), at); else if (t) addTextCard(t, at);
+});
+
+/* ---------- emoji ---------- */
+const EMOJI = "😀 😂 🙂 😉 😍 🤔 😮 😢 😡 🥳 😎 🙌 👍 👎 👏 🙏 💪 👀 ✅ ❌ ⚠️ ❓ ❗ ⭐ 🔥 💡 📌 📎 🎯 🚀 ⏰ 📅 📈 📉 💰 🏠 🏢 🚗 🔌 🔋 ☀️ ⚡ 🌳 🌏 💧 ♻️ 🛠️ 📣 💬 ❤️ 💚 💙 🟢 🟡 🔴 🔵 ⬆️ ⬇️ ➡️ ⬅️ 1️⃣ 2️⃣ 3️⃣".split(" ");
+function insertEmoji(ch){
+  const a = document.activeElement;
+  if (a && (a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && /^(text|search|)$/.test(a.type))) && !a.closest(".lock")){
+    const s0 = a.selectionStart ?? a.value.length, s1 = a.selectionEnd ?? s0;
+    a.setRangeText(ch, s0, s1, "end"); a.dispatchEvent(new Event("input", { bubbles: true })); return;
+  }
+  if (a && a.isContentEditable){ document.execCommand("insertText", false, ch); return; }
+  if (!board || mode !== "board") return;
+  const pt = dropPoint();
+  addObject({ kind: "emoji", emoji: ch, x: pt.x - 32, y: pt.y - 32, w: 64 });
+}
+const emojiBtn = $("#emojiBtn");
+emojiBtn.addEventListener("mousedown", e => e.preventDefault());     // keep the cursor in the text you're editing
+emojiBtn.addEventListener("click", () => {
+  if (menuEl){ closeMenu(); return; }
+  openMenu(emojiBtn, m => {
+    m.classList.add("emoji-menu");
+    m.addEventListener("mousedown", e => e.preventDefault());
+    const hint = document.createElement("div"); hint.className = "lbl"; hint.textContent = "Adds to the board, or into the text you're typing"; m.appendChild(hint);
+    const g = document.createElement("div"); g.className = "emg";
+    for (const ch of EMOJI){ const b = document.createElement("button"); b.textContent = ch; b.setAttribute("aria-label", ch); b.onclick = () => { closeMenu(); insertEmoji(ch); }; g.appendChild(b); }
+    m.appendChild(g);
+  });
+});
+
 /* ---------- board chooser (shown on open, and from the boards menu or the Whiteboard name) ---------- */
 const picker = $("#picker");
 function previewSVG(b){
@@ -1946,7 +2360,7 @@ function previewSVG(b){
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const c of cards){ x0 = Math.min(x0, c.x); y0 = Math.min(y0, c.y); x1 = Math.max(x1, c.x + c.w); y1 = Math.max(y1, c.y + 76); }
   const pad = 40, w = x1 - x0 + pad * 2, h = y1 - y0 + pad * 2;
-  const tint = c => colorMode === "priority" ? (c.priority ? `var(--p${c.priority})` : "var(--t-plain)") : `var(--t-${c.color})`;
+  const tint = c => c.kind === "card" ? tintVar(c) : "var(--surface)";
   return `<svg viewBox="${x0 - pad} ${y0 - pad} ${w} ${h}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">` +
     cards.map(c => `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="70" rx="10" style="fill:${tint(c)};stroke:var(--card-line);stroke-width:${Math.max(2, w / 300)}"/>`).join("") + `</svg>`;
 }
@@ -2025,7 +2439,7 @@ document.addEventListener("keydown", e => {
   if (mod && e.key.toLowerCase() === "y"){ e.preventDefault(); doRedo(); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && selected && board){
     e.preventDefault();
-    if (selected.type === "card") deleteCard(selected.id); else deleteEdge(selected.id);
+    if (selected.type === "card") deleteCard(selected.id); else if (selected.type === "ink") deleteInkGroup(selected.id); else deleteEdge(selected.id);
   }
 });
 
