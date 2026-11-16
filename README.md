@@ -3,7 +3,7 @@
 Rewiring Aotearoa's whiteboard of fold-out cards.
 
 - Opens on a chooser showing every board; each board has its own link (`…/whiteboard/#<board id>`).
-- Click a card to unfold its detail; the cards below move out of the way.
+- Click a card's title, summary or detail to edit it in place. The arrow folds and unfolds a card; the cards below move out of the way.
 - Drag from the dot on a card's side to another card to connect them, or let go on empty board to make a new linked card.
 - Paste (or drop) pictures, links and text onto the board. Links appear as short pills; hover to switch one to a preview card (previews come from microlink.io, which is sent the link only when you choose *Show as card*).
 - Emoji button: adds an emoji to the board, or into the text you're typing.
