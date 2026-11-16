@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>Foldout Board</title>
+<title>Whiteboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650&family=Inter:wght@400;500;600&display=swap">
@@ -89,6 +89,10 @@ button{font:inherit; color:inherit}
 .menu hr{border:0; border-top:1px solid var(--line); margin:6px 2px}
 .menu .lbl{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:6px 10px 4px}
 .menu .danger{color:var(--danger)}
+
+.file-banner{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; top:56px}
+.file-banner .btn{height:28px}
+body.offline .lock{display:none}
 
 /* Board / Table tabs */
 .main{position:relative; flex:1; display:flex; min-height:0}
@@ -185,10 +189,11 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .chip b{font-weight:600; color:var(--muted)}
 
 /* Board */
-#vp{position:relative; flex:1; min-width:0; overflow:hidden; touch-action:none; cursor:default;
+#vp{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none; position:relative; flex:1; min-width:0; overflow:hidden; touch-action:none; cursor:default;
   background-image:radial-gradient(circle, var(--dot) 1.2px, transparent 1.4px); background-size:24px 24px}
 #vp.panning{cursor:grabbing}
 #vp.linking, #vp.linking .card-head{cursor:crosshair}
+#vp .body, #vp .edit{-webkit-user-select:text; user-select:text}
 #world{position:absolute; left:0; top:0; transform-origin:0 0}
 #edges{position:absolute; left:0; top:0; width:1px; height:1px; overflow:visible; pointer-events:none}
 #edges .e{stroke:var(--edge); stroke-width:1.75; fill:none}
@@ -334,9 +339,9 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 
 <div class="lock" id="lock">
   <form id="lockForm" autocomplete="on">
-    <h1><i aria-hidden="true"></i>Foldout Board</h1>
+    <h1><i aria-hidden="true"></i>Whiteboard</h1>
     <p>Rewiring Aotearoa's whiteboard. Enter the team password to open it.</p>
-    <input type="text" name="username" value="foldout-board" autocomplete="username" hidden>
+    <input type="text" name="username" value="rewiring-whiteboard" autocomplete="username" hidden>
     <label>Password<input type="password" id="lockPass" autocomplete="current-password" required></label>
     <label>Your name <span>(shown in the change history)</span><input type="text" id="lockName" maxlength="40" autocomplete="name"></label>
     <label class="check"><input type="checkbox" id="lockRemember" checked> Keep me signed in on this device</label>
@@ -347,7 +352,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 
 <div class="bar">
   <div class="bar-row">
-    <div class="brand"><i aria-hidden="true"></i>Foldout</div>
+    <div class="brand"><i aria-hidden="true"></i>Whiteboard</div>
     <div class="grp">
       <input id="boardName" aria-label="Board name" value="" placeholder="Board name" disabled>
       <button class="btn icon" id="boardsBtn" title="Switch board" aria-label="Switch board"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg></button>
@@ -424,7 +429,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <button class="btn primary" id="inkDone">Done</button>
   </div>
   <div class="plegend" id="plegend" hidden aria-label="Priority colours, 1 is highest">Priority <span>1 = highest</span><i style="--pc:var(--p1)">1</i><i style="--pc:var(--p2)">2</i><i style="--pc:var(--p3)">3</i><i style="--pc:var(--p4)">4</i><i style="--pc:var(--p5)">5</i><i style="--pc:var(--p6)">6</i><i style="--pc:var(--p7)">7</i><i style="--pc:var(--p8)">8</i><i style="--pc:var(--p9)">9</i><i style="--pc:var(--p10)">10</i></div>
-  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll to pan, <b>Ctrl/⌘ + scroll</b> to zoom</div>
+  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll or drag to pan, <b>pinch</b> or <b>Ctrl/⌘ + scroll</b> to zoom · <b>Apple Pencil</b> draws</div>
   <div class="empty-state" id="emptyState" hidden>
     <div class="empty-card">
       <h2>No boards yet</h2>
@@ -446,6 +451,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <div class="tv-scroll" id="tvBody"></div>
   </section>
   <div class="banner" id="banner" hidden></div>
+  <div class="banner file-banner" id="fileBanner" hidden><span></span> <button class="btn primary" id="fileReconnect">Allow saving to file</button> <button class="btn" id="fileStop">Stop</button></div>
   <aside class="drawer" id="drawer" hidden aria-label="History">
     <header><h3>History</h3><button class="btn icon" id="drawerClose" aria-label="Close history"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></header>
     <form class="save-v" id="saveVForm"><input id="vName" placeholder="Name this version (optional)" maxlength="80"><button class="btn primary" type="submit">Save version</button></form>
@@ -478,6 +484,41 @@ const ss = {
   set(k, v){ try{ sessionStorage.setItem(k, JSON.stringify(v)); }catch{} },
   del(k){ try{ sessionStorage.removeItem(k); }catch{} }
 };
+
+/* ---------- where boards are saved ----------
+   Online (served from the web): boards are files in the private GitHub data repo.
+   Offline (this file opened from your computer, or ?offline): boards are saved in this browser,
+   with history, a bin for deleted boards, and optionally a .json file on disk kept up to date. */
+const OFFLINE = location.protocol === "file:" || /[?&]offline\b/.test(location.search);
+// Internal names below ("foldout-board", "fb-…") are from the tool's first name. Keep them: saved boards live under them.
+const kv = (() => {
+  let dbp = null, useLs = false;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    try {
+      const r = indexedDB.open("foldout-board", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("kv");
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    } catch (e){ rej(e); }
+  }));
+  const tx = async (mode, fn) => {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction("kv", mode), req = fn(t.objectStore("kv"));
+      t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  };
+  const lsKeys = () => { const out = []; try { for (let i = 0; i < localStorage.length; i++){ const k = localStorage.key(i); if (k.startsWith("fbk:")) out.push(k.slice(4)); } } catch {} return out; };
+  const wrap = (idbFn, lsFn) => async (...a) => { if (!useLs){ try { return await idbFn(...a); } catch { useLs = true; } } return lsFn(...a); };
+  return {
+    get: wrap(k => tx("readonly", st => st.get(k)), k => ls.get("fbk:" + k, undefined)),
+    set: wrap((k, v) => tx("readwrite", st => st.put(v, k)), (k, v) => { if (!ls.set("fbk:" + k, v)) throw new Error("full"); }),
+    del: wrap(k => tx("readwrite", st => st.delete(k)), k => ls.del("fbk:" + k)),
+    keys: wrap(() => tx("readonly", st => st.getAllKeys()), lsKeys),
+    usingLocalStorage: () => useLs
+  };
+})();
+let fileHandle = null, fileOk = false;   // optional .json file on disk that mirrors every save (Chrome, Edge)
+const canLinkFile = OFFLINE && "showSaveFilePicker" in window;
 
 /* ---------- state ---------- */
 let GH = null;                 // {token, owner, repo, branch}
@@ -985,17 +1026,60 @@ vp.addEventListener("wheel", e => {
   else { view.x -= e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX; view.y -= e.shiftKey && !e.deltaX ? 0 : e.deltaY; applyView(); }
 }, { passive: false });
 
+/* Touch: two fingers pinch to zoom and pan. Apple Pencil draws; fingers never draw once a pencil has been used. */
+const touches = new Map();
+let pinch = null, penSeen = false;
 vp.addEventListener("pointerdown", e => {
+  if (e.pointerType === "pen") penSeen = true;
+  if (e.pointerType !== "touch") return;
+  touches.set(e.pointerId, [e.clientX, e.clientY]);
+  if (touches.size === 2){
+    const [[ax, ay], [bx, by]] = [...touches.values()];
+    pinch = { d: Math.hypot(ax - bx, ay - by) || 1, mx: (ax + bx) / 2, my: (ay + by) / 2, view: { ...view } };
+    cancelInkStroke();
+  }
+}, true);
+vp.addEventListener("pointermove", e => {
+  if (!touches.has(e.pointerId)) return;
+  touches.set(e.pointerId, [e.clientX, e.clientY]);
+  if (!pinch || touches.size < 2) return;
+  const [[ax, ay], [bx, by]] = [...touches.values()];
+  const R = vp.getBoundingClientRect();
+  const ns = clamp(pinch.view.s * (Math.hypot(ax - bx, ay - by) / pinch.d), 0.2, 2.5);
+  const mx = (ax + bx) / 2 - R.left, my = (ay + by) / 2 - R.top, ox = pinch.mx - R.left, oy = pinch.my - R.top;
+  view.s = ns;
+  view.x = mx - (ox - pinch.view.x) * (ns / pinch.view.s);
+  view.y = my - (oy - pinch.view.y) * (ns / pinch.view.s);
+  applyView();
+}, true);
+const endTouch = e => { if (touches.delete(e.pointerId) && touches.size < 2) pinch = null; };
+vp.addEventListener("pointerup", endTouch, true);
+vp.addEventListener("pointercancel", endTouch, true);
+
+function startPan(e, el){
+  const st = { px: e.clientX, py: e.clientY, x: view.x, y: view.y };
+  try { el.setPointerCapture(e.pointerId); } catch {}
+  vp.classList.add("panning");
+  const move = ev => { if (pinch) return; view.x = st.x + ev.clientX - st.px; view.y = st.y + ev.clientY - st.py; applyView(); };
+  const up = () => { vp.classList.remove("panning"); el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); };
+  el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+}
+
+vp.addEventListener("pointerdown", e => {
+  if (pinch || touches.size > 1) return;
+  // Apple Pencil (or any pen) on the empty board draws straight away, no need to switch to Marker.
+  if (e.pointerType === "pen" && !inkMode && board && mode === "board" && !e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help,.inkbar,.plegend,button,input,textarea")){
+    if (linkMode) setLinkMode(false);
+    if (editingId) stopEditing();
+    beginInk(e, vp);
+    return;
+  }
   if (inkMode || e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help,.inkbar,.plegend")) return;
   if (e.button !== 0 && e.button !== 1) return;
   if (linkMode) setLinkMode(false);
   if (editingId) stopEditing();
   select(null); closeMenu();
-  const st = { px: e.clientX, py: e.clientY, x: view.x, y: view.y };
-  vp.setPointerCapture(e.pointerId); vp.classList.add("panning");
-  const move = ev => { view.x = st.x + ev.clientX - st.px; view.y = st.y + ev.clientY - st.py; applyView(); };
-  const up = () => { vp.classList.remove("panning"); vp.removeEventListener("pointermove", move); vp.removeEventListener("pointerup", up); vp.removeEventListener("pointercancel", up); };
-  vp.addEventListener("pointermove", move); vp.addEventListener("pointerup", up); vp.addEventListener("pointercancel", up);
+  startPan(e, vp);
 });
 vp.addEventListener("dblclick", e => {
   if (inkMode || e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help,.inkbar,.plegend") || !board) return;
@@ -1006,9 +1090,10 @@ vp.addEventListener("dblclick", e => {
 /* ---------- saving ---------- */
 function setStatus(s, text){
   const el = $("#status"); el.dataset.s = s;
-  el.querySelector("span").textContent = text || ({ saved: "Saved to GitHub", pending: "Saving…", error: "Not saved yet, retrying" }[s]);
+  const savedText = !OFFLINE ? "Saved to GitHub" : (fileHandle && fileOk) ? "Saved · " + fileHandle.name : "Saved on this computer";
+  el.querySelector("span").textContent = text || ({ saved: savedText, pending: "Saving…", error: "Not saved yet, retrying" }[s]);
 }
-function mirrorLocal(){ ls.set("fb-backup", boardData); }   // last-resort copy in this browser
+function mirrorLocal(){ if (!OFFLINE) ls.set("fb-backup", boardData); }   // last-resort copy in this browser
 function markDirty(){
   if (!board || stopped) return;
   board.updatedAt = Date.now(); dirty = true; changeSeq++;
@@ -1024,6 +1109,7 @@ function flush(){ clearTimeout(saveTimer); return queueWrite(doSave); }
 async function doSave(){
   if (!dirty || !board || stopped) return;
   firstDirtyAt = 0;
+  if (OFFLINE) return localSave();
   const seq = changeSeq, id = boardId, payload = serialize(board);
   const text = JSON.stringify(payload, null, 2) + "\n";
   const msg = `Save “${payload.name}”${who()}`;
@@ -1047,12 +1133,64 @@ async function doSave(){
     setTimeout(() => { if (dirty && !stopped) flush(); }, 5000 + Math.random() * 3000);
   }
 }
+/* Offline save: the board, a history snapshot every couple of minutes, then the linked file if there is one. */
+async function localSave(){
+  const seq = changeSeq, id = boardId, payload = serialize(board);
+  try {
+    await kv.set("board:" + id, payload);
+    const h = (await kv.get("hist:" + id)) || [];
+    if (!h.length || payload.updatedAt - h[0].at > 120000){
+      h.unshift({ at: payload.updatedAt, msg: `Saved “${payload.name}”${who()}`, data: payload });
+      await kv.set("hist:" + id, h.slice(0, 80));
+    } else { h[0] = { ...h[0], at: payload.updatedAt, data: payload }; await kv.set("hist:" + id, h); }
+    await writeLinkedFile();
+    if (seq === changeSeq && id === boardId){ dirty = false; setStatus("saved"); }
+    if (!$("#drawer").hidden && id === boardId) loadHistorySoon();
+  } catch {
+    setStatus("error", "Couldn't save, retrying");
+    toast("This browser refused to save (storage may be full). Export your boards to a file to be safe.");
+    setTimeout(() => { if (dirty) flush(); }, 5000);
+  }
+}
+function exportPayload(list){ return { app: "foldout-board", v: 1, exportedAt: new Date().toISOString(), boards: list.map(b => ({ name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [] })) }; }
+async function writeLinkedFile(){
+  if (!fileHandle || !fileOk) return;
+  try {
+    const w = await fileHandle.createWritable();
+    await w.write(JSON.stringify(exportPayload(Object.values(boardData)), null, 2));
+    await w.close();
+  } catch { fileOk = false; fileBanner(); }
+}
+async function linkFile(){
+  let h;
+  try { h = await window.showSaveFilePicker({ suggestedName: "whiteboard-boards.json", types: [{ description: "Whiteboard data", accept: { "application/json": [".json"] } }] }); }
+  catch { return; }
+  fileHandle = h; fileOk = true;
+  try { await kv.set("fileHandle", h); } catch {}
+  await writeLinkedFile();
+  fileBanner(); setStatus("saved");
+  toast(`Every change now also saves to ${h.name}.`);
+}
+async function unlinkFile(){ fileHandle = null; fileOk = false; try { await kv.del("fileHandle"); } catch {} fileBanner(); setStatus("saved"); toast("Stopped saving to the file. Boards are still saved in this browser."); }
+function fileBanner(){
+  const b = $("#fileBanner");
+  if (fileHandle && !fileOk){
+    b.querySelector("span").textContent = `Changes aren't reaching ${fileHandle.name} until you allow it again.`;
+    b.hidden = false;
+  } else b.hidden = true;
+}
+async function reconnectFile(){
+  if (!fileHandle) return;
+  try { fileOk = (await fileHandle.requestPermission({ mode: "readwrite" })) === "granted"; } catch { fileOk = false; }
+  if (fileOk){ await writeLinkedFile(); setStatus("saved"); toast(`Saving to ${fileHandle.name} again.`); }
+  fileBanner();
+}
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && dirty) flush(); });
 window.addEventListener("beforeunload", e => { if (dirty){ mirrorLocal(); flush(); e.preventDefault(); e.returnValue = ""; } });
 
 /* Pick up other people's changes to the open board. Conditional requests don't use up GitHub's rate limit. */
 async function poll(){
-  if (!GH || !boardId || dirty || dragId || editingId || tableBusy() || document.hidden || stopped) return;
+  if (OFFLINE || !GH || !boardId || dirty || dragId || editingId || tableBusy() || document.hidden || stopped) return;
   const id = boardId;
   let r;
   try { r = await gh("GET", `contents/boards/${id}.json?ref=${encodeURIComponent(GH.branch)}`, null, etags[id] ? { "If-None-Match": etags[id] } : {}); }
@@ -1073,6 +1211,14 @@ window.addEventListener("focus", poll);
 
 /* ---------- boards ---------- */
 async function loadAllBoards(){
+  if (OFFLINE){
+    const keys = (await kv.keys()).filter(k => typeof k === "string" && k.startsWith("board:"));
+    for (const k of keys){
+      const id = k.slice(6); if (!SAFE_ID.test(id) || (id === boardId && dirty)) continue;
+      const b = await kv.get(k); if (b) boardData[id] = sanitizeBoard(b);
+    }
+    return;
+  }
   const files = (await listDir("boards")).filter(f => f.type === "file" && /\.json$/.test(f.name));
   const live = new Set();
   await Promise.all(files.map(async f => {
@@ -1125,12 +1271,22 @@ async function deleteBoard(){
   if (!boardId) return;
   const id = boardId, name = board.name;
   dirty = false; clearTimeout(saveTimer);
-  try { await queueWrite(() => deleteFile(`boards/${id}.json`, shas[id], `Delete “${name}”${who()}`)); }
-  catch { toast("Couldn't delete it on GitHub. Try again in a moment."); return; }
+  if (OFFLINE){
+    try {
+      const trash = (await kv.get("trash")) || [];
+      trash.unshift({ id, deletedAt: Date.now(), board: serialize(board) });
+      await kv.set("trash", trash.slice(0, 50));
+      await kv.del("board:" + id);
+    } catch { toast("Couldn't delete it. Try again in a moment."); return; }
+  } else {
+    try { await queueWrite(() => deleteFile(`boards/${id}.json`, shas[id], `Delete “${name}”${who()}`)); }
+    catch { toast("Couldn't delete it on GitHub. Try again in a moment."); return; }
+  }
   delete boardData[id]; delete shas[id]; mirrorLocal(); ls.del("fb-view-" + id);
   const next = Object.keys(boardData).sort((a, b) => boardData[b].updatedAt - boardData[a].updatedAt)[0];
   if (next) openBoard(next); else showEmpty();
-  toast(`Deleted “${name}”. It can still be recovered from the data repo's history.`);
+  if (OFFLINE) writeLinkedFile();
+  toast(OFFLINE ? `Moved “${name}” to Recently deleted.` : `Deleted “${name}”. It can still be recovered from the data repo's history.`);
 }
 $("#boardName").addEventListener("input", e => { if (!board) return; board.name = e.target.value.slice(0, 120); markDirty(); });
 $("#boardName").addEventListener("change", e => { if (board && !board.name.trim()){ board.name = "Untitled board"; e.target.value = board.name; markDirty(); } });
@@ -1171,6 +1327,28 @@ function buildBoardsMenu(m){
   m.appendChild(document.createElement("hr"));
   item(m, "New blank board", () => createBoard({ name: "Untitled board", cards: [], edges: [] }, true));
   item(m, "New board from example", () => createBoard(exampleBoard()));
+  if (OFFLINE) item(m, "Recently deleted…", showTrash);
+}
+async function showTrash(){
+  const trash = (await kv.get("trash").catch(() => null)) || [];
+  dialog((d, close) => {
+    d.innerHTML = `<h3>Recently deleted</h3><p></p><div class="vlist" style="max-height:50vh;padding:0"></div><div class="row"><button class="btn cancel">Close</button></div>`;
+    d.querySelector("p").textContent = trash.length ? "Restore a board to put it back in your list." : "Nothing here. Deleted boards appear here so they can be restored.";
+    const list = d.querySelector(".vlist");
+    trash.forEach((t, i) => {
+      const n = (t.board?.cards || []).length;
+      vrow(list, String(t.board?.name || "Untitled board"), `Deleted ${fmt(t.deletedAt)} · ${n} card${n === 1 ? "" : "s"}`, async () => {
+        close();
+        const rest = trash.filter((_, j) => j !== i);
+        const id = SAFE_ID.test(t.id) && !boardData[t.id] ? t.id : uid();
+        boardData[id] = sanitizeBoard({ ...t.board, updatedAt: Date.now() });
+        await kv.set("board:" + id, serialize(boardData[id])); await kv.set("trash", rest);
+        await openBoard(id); writeLinkedFile();
+        toast(`Restored “${boardData[id].name}”.`);
+      });
+    });
+    d.querySelector(".cancel").onclick = close;
+  });
 }
 $("#boardsBtn").addEventListener("click", e => {
   if (menuEl){ closeMenu(); return; }
@@ -1185,11 +1363,18 @@ $("#moreBtn").addEventListener("click", e => {
     item(m, "Duplicate board", () => board && createBoard({ ...clone(board), name: board.name + " (copy)" }));
     m.appendChild(document.createElement("hr"));
     item(m, "Export this board (.json)", () => board && exportBoards([board], slug(board.name)));
-    item(m, "Export all boards (.json)", () => exportBoards(Object.values(boardData), "foldout-boards"));
+    item(m, "Export all boards (.json)", () => exportBoards(Object.values(boardData), "whiteboard-boards"));
     item(m, "Import from file…", () => $("#importFile").click());
     m.appendChild(document.createElement("hr"));
-    item(m, "Delete board…", () => board && confirmDialog(`Delete “${board.name}”?`, "The board disappears from the list. Its full history stays in the data repo on GitHub, so it can be recovered.", "Delete board", deleteBoard), "danger");
-    item(m, "Sign out on this device", signOut);
+    if (OFFLINE && canLinkFile){
+      m.appendChild(document.createElement("hr"));
+      if (fileHandle) item(m, `Stop saving to ${fileHandle.name}`, unlinkFile);
+      else item(m, "Also save to a file on this computer…", linkFile);
+    }
+    if (!OFFLINE) item(m, "Download offline copy (.html)", downloadOffline);
+    m.appendChild(document.createElement("hr"));
+    item(m, "Delete board…", () => board && confirmDialog(`Delete “${board.name}”?`, OFFLINE ? "It moves to Recently deleted (in the boards list), where you can restore it." : "The board disappears from the list. Its full history stays in the data repo on GitHub, so it can be recovered.", "Delete board", deleteBoard), "danger");
+    if (!OFFLINE) item(m, "Sign out on this device", signOut);
   });
 });
 
@@ -1197,8 +1382,14 @@ $("#moreBtn").addEventListener("click", e => {
 const slug = s => (s || "board").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "board";
 async function exportBoards(list, name){
   if (dirty) await flush();
-  const data = JSON.stringify({ app: "foldout-board", v: 1, exportedAt: new Date().toISOString(), boards: list.map(b => ({ name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [] })) }, null, 2);
-  download(name + ".json", data, "application/json");
+  download(name + ".json", JSON.stringify(exportPayload(list), null, 2), "application/json");
+}
+async function downloadOffline(){
+  try {
+    const html = await (await fetch(location.href.split("#")[0].split("?")[0], { cache: "no-store" })).text();
+    download("whiteboard.html", html, "text/html");
+    toast("Downloaded. Open it from your computer to work offline. To take boards with you, use Export all boards, then Import in the offline copy.");
+  } catch { toast("Couldn't download the offline copy. Check your connection and try again."); }
 }
 function download(filename, data, type){
   const url = URL.createObjectURL(new Blob([data], { type }));
@@ -1218,7 +1409,7 @@ $("#importFile").addEventListener("change", e => {
       for (const b of list){ const id = await createBoard(b); first = first || id; }
       if (first) openBoard(first);
       toast(`Imported ${list.length} board${list.length > 1 ? "s" : ""}.`);
-    } catch { toast("That file isn't a Foldout board export."); }
+    } catch { toast("That file isn't a Whiteboard export."); }
   };
   r.readAsText(f);
 });
@@ -1258,6 +1449,11 @@ $("#saveVForm").addEventListener("submit", async e => {
 });
 async function saveVersion(name){
   const v = { name: name.slice(0, 80), createdAt: Date.now(), by: editorName, cards: clone(board.cards), edges: clone(board.edges), columns: clone(board.columns), strokes: clone(board.strokes) };
+  if (OFFLINE){
+    try { const arr = (await kv.get("ver:" + boardId)) || []; arr.unshift({ id: uid(), ...v }); await kv.set("ver:" + boardId, arr.slice(0, 100)); }
+    catch { toast("Couldn't save that version."); return false; }
+    loadHistory(); return true;
+  }
   const path = `versions/${boardId}/${v.createdAt}-${slug(name).slice(0, 40)}.json`;
   try { await queueWrite(() => writeFile(path, JSON.stringify(v, null, 2) + "\n", undefined, `Version “${v.name}” of “${board.name}”${who()}`)); }
   catch { toast("Couldn't save that version. Try again in a moment."); return false; }
@@ -1289,6 +1485,7 @@ async function loadHistory(){
   if (!board){ list.innerHTML = ""; return; }
   const id = boardId;
   list.innerHTML = '<div class="note">Loading…</div>';
+  if (OFFLINE) return loadLocalHistory(list, id);
   let named = [], commits = [];
   try {
     const [files, cr] = await Promise.all([
@@ -1327,6 +1524,29 @@ async function loadHistory(){
   const repoLink = document.createElement("div"); repoLink.className = "note";
   repoLink.innerHTML = `Older saves and deleted boards: <a target="_blank" rel="noopener" href="https://github.com/${encodeURIComponent(GH.owner)}/${encodeURIComponent(GH.repo)}/commits/${encodeURIComponent(GH.branch)}">full history on GitHub</a>.`;
   list.appendChild(repoLink);
+}
+
+async function loadLocalHistory(list, id){
+  let vers = [], hist = [];
+  try { [vers, hist] = await Promise.all([kv.get("ver:" + id), kv.get("hist:" + id)]); } catch {}
+  vers = vers || []; hist = hist || [];
+  if (id !== boardId) return;
+  list.innerHTML = "";
+  sec(list, "Named versions");
+  if (!vers.length){ const n = document.createElement("div"); n.className = "note"; n.style.padding = "2px 8px 6px"; n.textContent = "None yet. Save one before a big rearrange."; list.appendChild(n); }
+  for (const v of vers){
+    const n = Array.isArray(v.cards) ? v.cards.length : 0;
+    vrow(list, String(v.name || "Untitled version"), `${fmt(+v.createdAt || 0)} · ${n} card${n === 1 ? "" : "s"}`, () => restoreFrom(v, `“${v.name}”`),
+      () => confirmDialog("Delete this version?", `“${v.name}” will be removed from the list. The board itself is not affected.`, "Delete version", async () => {
+        try { await kv.set("ver:" + id, ((await kv.get("ver:" + id)) || []).filter(x => x.id !== v.id)); } catch {}
+        loadHistory();
+      }));
+  }
+  sec(list, "Saves on this computer");
+  for (const h of hist) vrow(list, h.msg || "Save", fmt(h.at), () => restoreFrom(h.data, "the save from " + fmt(h.at)));
+  const note = document.createElement("div"); note.className = "note";
+  note.textContent = "A snapshot is kept every couple of minutes while you work (the last 80). Export your boards now and then for a copy outside this browser.";
+  list.appendChild(note);
 }
 
 /* ---------- priority + colour mode ---------- */
@@ -1399,39 +1619,58 @@ $("#inkBar").addEventListener("click", e => {
   const c = e.target.closest("[data-ink]"); if (c){ inkColor = c.dataset.ink; erasing = false; ls.set("fb-ink", inkColor); updateInkBar(); return; }
   const w = e.target.closest("[data-w]"); if (w){ inkW = +w.dataset.w; erasing = false; ls.set("fb-inkw", inkW); updateInkBar(); }
 });
+let activeStroke = null;
+function cancelInkStroke(){
+  if (!activeStroke) return;
+  const k = activeStroke; activeStroke = null;
+  board.strokes = board.strokes.filter(x => x !== k); undoStack.pop(); updUndo(); drawInk();
+}
 inkCatch.addEventListener("pointerdown", e => {
   if (e.button !== 0 || !board) return;
   e.preventDefault(); e.stopPropagation();
-  inkCatch.setPointerCapture(e.pointerId);
+  // Palm rejection: once a pencil has been used, fingers pan in marker mode instead of drawing.
+  if (e.pointerType === "touch" && (penSeen || touches.size > 1)){ if (!pinch) startPan(e, inkCatch); return; }
+  beginInk(e, inkCatch);
+});
+function beginInk(e, el){
+  e.preventDefault();
+  try { el.setPointerCapture(e.pointerId); } catch {}
   const toW = ev => { const R = vp.getBoundingClientRect(); return [(ev.clientX - R.left - view.x) / view.s, (ev.clientY - R.top - view.y) / view.s]; };
+  const pts = ev => (ev.getCoalescedEvents ? ev.getCoalescedEvents() : null)?.length ? ev.getCoalescedEvents() : [ev];
   let move, done;
-  if (erasing){
+  if (erasing && inkMode){
     let pushed = false;
     move = ev => {
-      const [x, y] = toW(ev);
-      const keep = board.strokes.filter(k => !strokeHit(k, x, y, 8 / view.s));
-      if (keep.length !== board.strokes.length){ if (!pushed){ pushUndo(); pushed = true; } board.strokes = keep; drawInk(); }
+      for (const pe of pts(ev)){
+        const [x, y] = toW(pe);
+        const keep = board.strokes.filter(k => !strokeHit(k, x, y, 8 / view.s));
+        if (keep.length !== board.strokes.length){ if (!pushed){ pushUndo(); pushed = true; } board.strokes = keep; drawInk(); }
+      }
     };
     done = () => { if (pushed) markDirty(); };
   } else {
     pushUndo();
     const [x0, y0] = toW(e);
     const k = { id: uid(), c: inkColor, w: inkW, p: [+x0.toFixed(1), +y0.toFixed(1)] };
-    board.strokes.push(k);
+    board.strokes.push(k); activeStroke = k;
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.setAttribute("class", "ink-" + k.c); path.setAttribute("stroke-width", k.w); path.setAttribute("d", inkPath(k.p));
     inkG.appendChild(path);
     move = ev => {
-      const [x, y] = toW(ev), p = k.p;
-      if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) < 1.5 / view.s) return;
-      p.push(+x.toFixed(1), +y.toFixed(1)); path.setAttribute("d", inkPath(p));
+      if (activeStroke !== k) return;
+      for (const pe of pts(ev)){
+        const [x, y] = toW(pe), p = k.p;
+        if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) < 1.2 / view.s) continue;
+        p.push(+x.toFixed(1), +y.toFixed(1));
+      }
+      path.setAttribute("d", inkPath(k.p));
     };
-    done = () => markDirty();
+    done = () => { if (activeStroke === k){ activeStroke = null; markDirty(); } };
   }
   move(e);
-  const up = () => { inkCatch.removeEventListener("pointermove", move); inkCatch.removeEventListener("pointerup", up); inkCatch.removeEventListener("pointercancel", up); done(); };
-  inkCatch.addEventListener("pointermove", move); inkCatch.addEventListener("pointerup", up); inkCatch.addEventListener("pointercancel", up);
-});
+  const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); done(); };
+  el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+}
 
 /* ---------- table view: one row per card, same data as the board ---------- */
 let mode = "board";
@@ -1777,6 +2016,7 @@ async function start(){
   $("#lock").hidden = true;
   $("#lockPass").value = "";
   setStatus("pending", "Loading…");
+  if (OFFLINE) return startOffline();
   // Recover anything that never reached GitHub from this browser's copy.
   const local = ls.get("fb-backup", {});
   try { await loadAllBoards(); }
@@ -1796,11 +2036,30 @@ async function start(){
   }
 }
 
+async function startOffline(){
+  editorName = ls.get("fb-name", "");
+  try {
+    fileHandle = (await kv.get("fileHandle")) || null;
+    if (fileHandle) fileOk = (await fileHandle.queryPermission({ mode: "readwrite" })) === "granted";
+  } catch { fileHandle = null; }
+  fileBanner();
+  try { await loadAllBoards(); }
+  catch { showBanner("This browser won't let the board save here. Try Chrome, Edge or Safari, and avoid private windows."); }
+  if (kv.usingLocalStorage()) showBanner("Saving in this browser's basic storage. Export your boards now and then to keep a copy.");
+  const ids = Object.keys(boardData);
+  if (!ids.length){ showEmpty(); return; }
+  const last = ls.get("fb-last", null);
+  await openBoard(ids.includes(last) ? last : ids.sort((a, b) => boardData[b].updatedAt - boardData[a].updatedAt)[0]);
+}
+$("#fileReconnect").addEventListener("click", reconnectFile);
+$("#fileStop").addEventListener("click", unlinkFile);
+
 applyView();
 setColorMode(colorMode);
 setMode(ls.get("fb-mode", "board"));
-const saved = ls.get("fb-auth", null) || ss.get("fb-auth", null);
-if (saved && saved.token){
+const saved = OFFLINE ? null : (ls.get("fb-auth", null) || ss.get("fb-auth", null));
+if (OFFLINE){ document.body.classList.add("offline"); start(); }
+else if (saved && saved.token){
   GH = { token: saved.token, owner: saved.owner, repo: saved.repo, branch: saved.branch || "main" };
   editorName = saved.name || ls.get("fb-name", "");
   checkAccess().then(s => { if (s === "expired") accessProblem(); else start(); }, () => start());

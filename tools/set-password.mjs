@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Sets (or changes) the Foldout Board password.
+// Sets (or changes) the Whiteboard password.
 //
 // It asks for a GitHub fine-grained access key that can read and write the private data repo,
 // and for the team password, then writes config.enc.json: the key encrypted with the password
@@ -14,7 +14,7 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-const OWNER = "rewiring-nz", REPO = "foldout-board-data", BRANCH = "main";
+const OWNER = "rewiring-nz", REPO = "whiteboard-data", BRANCH = "main";
 const ITER = 600000;
 const out = join(dirname(fileURLToPath(import.meta.url)), "..", "config.enc.json");
 
@@ -41,7 +41,7 @@ function ask(q, hidden) {
 }
 const b64 = u => Buffer.from(u).toString("base64");
 
-console.log("\nFoldout Board: set the password\n");
+console.log("\nWhiteboard: set the password\n");
 const token = process.env.FB_TOKEN || await ask("Paste the GitHub access key (hidden): ", true);
 if (!token) { console.error("No access key given."); process.exit(1); }
 
