@@ -1,6 +1,12 @@
 # Foldout Board
 
-A password-protected whiteboard of fold-out cards for Rewiring Aotearoa. Click a card to unfold its detail; the cards below move out of the way. Drag from the dot on a card's side to another card to connect them.
+A password-protected whiteboard of fold-out cards for Rewiring Aotearoa.
+
+- Click a card to unfold its detail; the cards below move out of the way.
+- Drag from the dot on a card's side to another card to connect them.
+- Set a priority from 1 (highest) to 10 on an unfolded card, and switch between your own colours and colour-by-priority.
+- Draw on the board with the marker (M).
+- The **Table** tab shows the same board as a spreadsheet: one row per card, editable both ways, with your own extra columns. Paste rows from Excel or Google Sheets to add cards (pasting never overwrites existing cards). Export to CSV.
 
 Live at **https://rewiring-nz.github.io/foldout-board/**
 
@@ -33,5 +39,5 @@ Anyone who already had the board open is asked for the new password next time.
 
 ## Rules for changing the app
 
-- Never remove or rename a field or colour name that saved boards use. New fields need a default so older boards still load.
+- Never remove or rename a field or colour name that saved boards use (cards: title, summary, body, color, open, priority, fields; boards: cards, edges, columns, strokes). New fields need a default so older boards still load.
 - Back up the data repo (it's git, so just note the current commit) before deploying a change that touches how boards are saved.

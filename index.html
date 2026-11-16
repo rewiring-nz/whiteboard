@@ -17,6 +17,8 @@
   --edge:#7c8a99; --shadow:rgba(27,37,48,.10); --danger:#b42318;
   --t-yellow:#fff3bf; --t-blue:#dce8ff; --t-green:#d6f2e1; --t-pink:#ffdfe7; --t-lilac:#e7e0ff; --t-plain:#ffffff;
   --t-orange:#ffe2c6; --t-red:#ffd3cd; --t-purple:#f1d9f5; --t-sky:#d3f0fb; --t-teal:#cdeee9; --t-grey:#e3e7ec;
+  --p1:#ffc4bc; --p2:#ffd0b8; --p3:#ffdcb3; --p4:#ffe8b0; --p5:#fff2bd; --p6:#eef4c2; --p7:#dbf0cd; --p8:#d0eee0; --p9:#d2e9f4; --p10:#dde5fb;
+  --m-ink:#1b2530; --m-red:#d93a2b; --m-blue:#2c56c9; --m-green:#1f9d55; --m-orange:#e07b00;
   --card-line:rgba(27,37,48,.12);
   --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --f-body:"Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
@@ -27,6 +29,8 @@
   --edge:#6f7d8c; --shadow:rgba(0,0,0,.45); --danger:#ff8a80;
   --t-yellow:#3a3420; --t-blue:#1f2b44; --t-green:#1d3428; --t-pink:#3c2430; --t-lilac:#2b2546; --t-plain:#222932;
   --t-orange:#3d2c1c; --t-red:#40211f; --t-purple:#36223c; --t-sky:#1b3340; --t-teal:#183633; --t-grey:#2b313a;
+  --p1:#4d2420; --p2:#4a2a1d; --p3:#45311c; --p4:#41381c; --p5:#3a3420; --p6:#333722; --p7:#263826; --p8:#1e372f; --p9:#1d3340; --p10:#222d45;
+  --m-ink:#e5eaf0; --m-red:#ff6b5e; --m-blue:#7f9dff; --m-green:#4cc38a; --m-orange:#ffa94d;
   --card-line:rgba(255,255,255,.09); color-scheme:dark;
 }}
 :root[data-theme="dark"]{
@@ -35,6 +39,8 @@
   --edge:#6f7d8c; --shadow:rgba(0,0,0,.45); --danger:#ff8a80;
   --t-yellow:#3a3420; --t-blue:#1f2b44; --t-green:#1d3428; --t-pink:#3c2430; --t-lilac:#2b2546; --t-plain:#222932;
   --t-orange:#3d2c1c; --t-red:#40211f; --t-purple:#36223c; --t-sky:#1b3340; --t-teal:#183633; --t-grey:#2b313a;
+  --p1:#4d2420; --p2:#4a2a1d; --p3:#45311c; --p4:#41381c; --p5:#3a3420; --p6:#333722; --p7:#263826; --p8:#1e372f; --p9:#1d3340; --p10:#222d45;
+  --m-ink:#e5eaf0; --m-red:#ff6b5e; --m-blue:#7f9dff; --m-green:#4cc38a; --m-orange:#ffa94d;
   --card-line:rgba(255,255,255,.09); color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -84,8 +90,102 @@ button{font:inherit; color:inherit}
 .menu .lbl{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); padding:6px 10px 4px}
 .menu .danger{color:var(--danger)}
 
+/* Board / Table tabs */
+.main{position:relative; flex:1; display:flex; min-height:0}
+.seg{display:flex; flex:none; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:2px; margin-left:4px}
+.seg button{border:0; background:transparent; height:26px; padding:0 12px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; color:var(--muted)}
+.seg button.on{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px var(--shadow)}
+body.mode-table .board-only{display:none !important}
+
+/* Table view */
+.tv{flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; background:var(--surface)}
+.tv-bar{display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding-block:10px; border-bottom:1px solid var(--line);
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
+.tv-bar .btn:not(.primary){border:1px solid var(--line)}
+.tv-hint{font-size:12px; color:var(--muted); margin-left:6px; flex:1 1 260px}
+.tv-scroll{flex:1; overflow:auto; padding-bottom:40px}
+.tv-empty{color:var(--muted); padding:24px 16px}
+table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size:13px; line-height:1.45}
+.grid th{position:sticky; top:0; z-index:2; background:var(--surface-2); text-align:left; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+  font-weight:600; padding:0; border-bottom:1px solid var(--line); border-right:1px solid var(--line); white-space:nowrap}
+.grid th .th{display:flex; align-items:center; gap:4px; padding:8px 8px 8px 10px}
+.grid th .sort{background:none; border:0; padding:0; font:inherit; letter-spacing:inherit; text-transform:inherit; color:inherit; cursor:pointer; display:flex; align-items:center; gap:4px}
+.grid th .sort:hover{color:var(--ink)}
+.grid th .arrow{font-size:10px; color:var(--accent)}
+.grid th .colx{margin-left:auto; border:0; background:none; color:var(--muted); cursor:pointer; padding:0 2px; font-size:13px; opacity:0}
+.grid th:hover .colx{opacity:1}
+.grid td{border-bottom:1px solid var(--line); border-right:1px solid var(--line); vertical-align:top; padding:0; background:var(--surface)}
+.grid tr:hover td{background:color-mix(in srgb, var(--accent) 4%, var(--surface))}
+.grid .cell{padding:8px 10px; min-height:36px; outline:none; white-space:pre-wrap; overflow-wrap:anywhere; cursor:text}
+.grid .cell:focus{box-shadow:inset 0 0 0 2px var(--accent); background:var(--surface)}
+.grid .cell:empty::before{content:attr(data-ph); color:var(--muted); opacity:.5}
+.grid .k-title .cell{font-weight:600}
+.grid .k-title{min-width:180px; width:220px} .grid .k-summary{min-width:220px} .grid .k-body{min-width:320px} .grid .k-custom{min-width:140px}
+.grid .k-body .cell:not(:focus){max-height:7.4em; overflow:hidden}
+.grid .k-color{width:38px; text-align:center}
+.grid .k-color button{width:18px; height:18px; border-radius:50%; border:1px solid var(--card-line); margin:9px; cursor:pointer; padding:0}
+.grid .k-links{min-width:140px; color:var(--muted); font-size:12px; padding:8px 10px}
+.grid .k-del{width:34px}
+.grid .k-del button{opacity:0; border:0; background:none; color:var(--muted); cursor:pointer; width:30px; height:34px; font-size:14px}
+.grid tr:hover .k-del button, .grid .k-del button:focus{opacity:1}
+.grid .k-del button:hover{color:var(--danger)}
+.grid tfoot td{border-bottom:0; border-right:0; background:transparent}
+.grid tfoot button{margin:6px 4px; border:1px dashed var(--line); background:transparent; border-radius:7px; height:32px; padding:0 12px; cursor:pointer; color:var(--muted); font-size:13px}
+.grid tfoot button:hover{color:var(--ink); border-color:var(--muted)}
+.grid tr.flash td{animation:flash 1.2s ease}
+@keyframes flash{from{background:color-mix(in srgb, var(--accent) 18%, var(--surface))}}
+.dialog input[type=text]{width:100%; height:36px; border:1px solid var(--line); border-radius:7px; padding:0 10px; font:14px var(--f-body); color:var(--ink); background:var(--surface-2)}
+.menu .swm{display:grid; grid-template-columns:repeat(6, 24px); gap:7px; padding:8px}
+.menu .swm button{width:24px; height:24px; padding:0; border-radius:50%; border:1px solid var(--card-line)}
+.menu .swm button.cur{box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--accent)}
+
+/* Priority */
+.card.c-p1{--tint:var(--p1)}
+.card.c-p2{--tint:var(--p2)}
+.card.c-p3{--tint:var(--p3)}
+.card.c-p4{--tint:var(--p4)}
+.card.c-p5{--tint:var(--p5)}
+.card.c-p6{--tint:var(--p6)}
+.card.c-p7{--tint:var(--p7)}
+.card.c-p8{--tint:var(--p8)}
+.card.c-p9{--tint:var(--p9)}
+.card.c-p10{--tint:var(--p10)}
+.prow{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 10px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.pp{display:flex; gap:3px; flex-wrap:wrap}
+.pp button{width:22px; height:22px; border-radius:5px; border:1px solid var(--card-line); background:var(--pc); font:600 11px var(--f-body); color:var(--ink); cursor:pointer; padding:0; letter-spacing:0}
+.pp button:hover{transform:translateY(-1px)}
+.pp button.cur{outline:2px solid var(--ink); outline-offset:1px}
+.pbadge{flex:none; align-self:flex-start; font:600 11px/1 var(--f-body); padding:4px 6px; border-radius:6px; background:var(--pc); border:1px solid var(--card-line); margin-top:1px; font-variant-numeric:tabular-nums}
+.pbadge:empty{display:none}
+.plegend{position:absolute; right:max(16px, env(safe-area-inset-right, 0px)); bottom:12px; z-index:5; display:flex; align-items:center; gap:3px; font-size:11.5px; color:var(--muted);
+  background:color-mix(in srgb, var(--surface) 88%, transparent); padding:6px 8px; border-radius:8px; border:1px solid var(--line)}
+.plegend i{font-style:normal; width:20px; height:20px; display:grid; place-items:center; border-radius:4px; background:var(--pc); color:var(--ink); font-weight:600; border:1px solid var(--card-line)}
+.plegend span{margin:0 4px}
+.grid .k-prio{width:64px} .grid .k-prio select{margin:6px; font:13px var(--f-body); color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:6px; height:26px}
+
+/* Marker */
+#inkG path{fill:none; stroke-linecap:round; stroke-linejoin:round}
+.ink-ink{stroke:var(--m-ink)} .ink-red{stroke:var(--m-red)} .ink-blue{stroke:var(--m-blue)} .ink-green{stroke:var(--m-green)} .ink-orange{stroke:var(--m-orange)}
+#inkCatch{position:absolute; inset:0; z-index:8; cursor:crosshair; touch-action:none}
+#inkCatch.erase{cursor:cell}
+.inkbar{position:absolute; top:12px; left:50%; transform:translateX(-50%); z-index:16; display:flex; gap:3px; align-items:center; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:5px; box-shadow:0 6px 20px var(--shadow); max-width:calc(100% - 32px); overflow-x:auto}
+.inkbar .ic{width:30px; height:30px; flex:none; border-radius:8px; border:2px solid transparent; padding:0; cursor:pointer; display:grid; place-items:center; background:none; color:var(--ink)}
+.inkbar .ic:hover{background:var(--surface-2)}
+.inkbar .ic.cur{border-color:var(--accent)}
+.inkbar .ic i{display:block; border-radius:50%; background:currentColor}
+.inkbar .ic svg{width:17px; height:17px}
+.inkbar .div{width:1px; height:20px; background:var(--line); margin:0 4px; flex:none}
+.inkbar .btn{height:30px}
+
+/* Custom column values shown on cards */
+.fields{display:flex; flex-wrap:wrap; gap:4px; margin-top:6px}
+.fields:empty{display:none}
+.chip{font-size:11.5px; line-height:1.3; padding:2px 7px; border-radius:10px; background:color-mix(in srgb, var(--ink) 7%, transparent); color:var(--ink); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.chip b{font-weight:600; color:var(--muted)}
+
 /* Board */
-#vp{position:relative; flex:1; overflow:hidden; touch-action:none; cursor:default;
+#vp{position:relative; flex:1; min-width:0; overflow:hidden; touch-action:none; cursor:default;
   background-image:radial-gradient(circle, var(--dot) 1.2px, transparent 1.4px); background-size:24px 24px}
 #vp.panning{cursor:grabbing}
 #vp.linking, #vp.linking .card-head{cursor:crosshair}
@@ -252,13 +352,25 @@ button{font:inherit; color:inherit}
       <input id="boardName" aria-label="Board name" value="" placeholder="Board name" disabled>
       <button class="btn icon" id="boardsBtn" title="Switch board" aria-label="Switch board"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6l4 4 4-4"/></svg></button>
     </div>
-    <div class="sep"></div>
-    <div class="grp">
-      <button class="btn primary" id="addBtn" title="Add a card (or double-click the board)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>Card</button>
-      <button class="btn" id="linkBtn" title="Link two cards"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13L13 3M8 3h5v5"/></svg>Link</button>
+    <div class="seg" role="tablist" aria-label="View">
+      <button class="on" id="vBoard" role="tab" aria-selected="true">Board</button>
+      <button id="vTable" role="tab" aria-selected="false">Table</button>
     </div>
     <div class="sep"></div>
     <div class="grp">
+      <button class="btn primary" id="addBtn" title="Add a card (or double-click the board)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>Card</button>
+      <button class="btn board-only" id="linkBtn" title="Link two cards"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 13L13 3M8 3h5v5"/></svg>Link</button>
+    </div>
+    <div class="sep board-only"></div>
+    <div class="grp board-only">
+      <button class="btn" id="inkBtn" title="Draw on the board with a marker (M)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.5 2.5l3 3-7 7-3.5.5.5-3.5z"/><path d="M2 14.5c2-1 4 .5 6-.5"/></svg>Marker</button>
+      <div class="seg" id="cmode" title="How cards are coloured">
+        <button data-cm="custom" class="on">Own colours</button>
+        <button data-cm="priority">By priority</button>
+      </div>
+    </div>
+    <div class="sep board-only"></div>
+    <div class="grp board-only">
       <button class="btn" id="expandAll" title="Expand every card">Expand all</button>
       <button class="btn" id="collapseAll" title="Collapse every card">Collapse all</button>
     </div>
@@ -267,8 +379,8 @@ button{font:inherit; color:inherit}
       <button class="btn icon" id="undoBtn" title="Undo (Ctrl/⌘ Z)" aria-label="Undo" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 4L2 7l3 3"/><path d="M2 7h7.5a3.5 3.5 0 010 7H7"/></svg></button>
       <button class="btn icon" id="redoBtn" title="Redo (Ctrl/⌘ Shift Z)" aria-label="Redo" disabled><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 4l3 3-3 3"/><path d="M14 7H6.5a3.5 3.5 0 000 7H9"/></svg></button>
     </div>
-    <div class="sep"></div>
-    <div class="grp">
+    <div class="sep board-only"></div>
+    <div class="grp board-only">
       <button class="btn icon" id="zoomOut" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h10"/></svg></button>
       <button class="btn" id="zoomLabel" title="Reset zoom to 100%">100%</button>
       <button class="btn icon" id="zoomIn" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg></button>
@@ -281,6 +393,7 @@ button{font:inherit; color:inherit}
   </div>
 </div>
 
+<main class="main" id="main">
 <div id="vp">
   <div id="world">
     <svg id="edges" aria-hidden="true">
@@ -288,12 +401,29 @@ button{font:inherit; color:inherit}
         <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
         <marker id="arrSel" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker>
       </defs>
+      <g id="inkG"></g>
       <g id="edgeG"></g>
       <path id="tempEdge" d="" marker-end="url(#arrSel)" hidden/>
     </svg>
     <button id="edgeDel" hidden>Remove link</button>
   </div>
-  <div class="banner" id="banner" hidden></div>
+  <div id="inkCatch" hidden></div>
+  <div class="inkbar" id="inkBar" hidden role="toolbar" aria-label="Marker">
+    <button class="ic" data-ink="ink" title="Black" aria-label="Black" style="color:var(--m-ink)"><i style="width:14px;height:14px"></i></button>
+    <button class="ic" data-ink="red" title="Red" aria-label="Red" style="color:var(--m-red)"><i style="width:14px;height:14px"></i></button>
+    <button class="ic" data-ink="blue" title="Blue" aria-label="Blue" style="color:var(--m-blue)"><i style="width:14px;height:14px"></i></button>
+    <button class="ic" data-ink="green" title="Green" aria-label="Green" style="color:var(--m-green)"><i style="width:14px;height:14px"></i></button>
+    <button class="ic" data-ink="orange" title="Orange" aria-label="Orange" style="color:var(--m-orange)"><i style="width:14px;height:14px"></i></button>
+    <span class="div"></span>
+    <button class="ic" data-w="2" title="Fine" aria-label="Fine line"><i style="width:4px;height:4px"></i></button>
+    <button class="ic" data-w="4" title="Medium" aria-label="Medium line"><i style="width:8px;height:8px"></i></button>
+    <button class="ic" data-w="9" title="Thick" aria-label="Thick line"><i style="width:14px;height:14px"></i></button>
+    <span class="div"></span>
+    <button class="ic" id="inkErase" title="Eraser: drag over lines to remove them" aria-label="Eraser"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 3l4 4-6 6H4l-2-2z"/><path d="M6 6l4 4M7 13h7"/></svg></button>
+    <span class="div"></span>
+    <button class="btn primary" id="inkDone">Done</button>
+  </div>
+  <div class="plegend" id="plegend" hidden aria-label="Priority colours, 1 is highest">Priority <span>1 = highest</span><i style="--pc:var(--p1)">1</i><i style="--pc:var(--p2)">2</i><i style="--pc:var(--p3)">3</i><i style="--pc:var(--p4)">4</i><i style="--pc:var(--p5)">5</i><i style="--pc:var(--p6)">6</i><i style="--pc:var(--p7)">7</i><i style="--pc:var(--p8)">8</i><i style="--pc:var(--p9)">9</i><i style="--pc:var(--p10)">10</i></div>
   <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll to pan, <b>Ctrl/⌘ + scroll</b> to zoom</div>
   <div class="empty-state" id="emptyState" hidden>
     <div class="empty-card">
@@ -305,13 +435,24 @@ button{font:inherit; color:inherit}
       </div>
     </div>
   </div>
+</div>
+  <section class="tv" id="tv" hidden aria-label="Table view">
+    <div class="tv-bar">
+      <button class="btn primary" id="tvAddRow"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>Row</button>
+      <button class="btn" id="tvAddCol"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>Column</button>
+      <button class="btn" id="tvCsv">Export CSV</button>
+      <span class="tv-hint">Each row is a card on the board. Edits show up in both places. Paste rows from Excel or Google Sheets to add cards.</span>
+    </div>
+    <div class="tv-scroll" id="tvBody"></div>
+  </section>
+  <div class="banner" id="banner" hidden></div>
   <aside class="drawer" id="drawer" hidden aria-label="History">
     <header><h3>History</h3><button class="btn icon" id="drawerClose" aria-label="Close history"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></header>
     <form class="save-v" id="saveVForm"><input id="vName" placeholder="Name this version (optional)" maxlength="80"><button class="btn primary" type="submit">Save version</button></form>
     <div class="note">Every change is saved to GitHub, and each save is kept below. Name a version to bookmark a layout you want to come back to.</div>
     <div class="vlist" id="vlist"></div>
   </aside>
-</div>
+</main>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
 
 <script>
@@ -323,6 +464,7 @@ const clientId = uid();
 // Two rows of six in the colour picker. Never remove a name: saved cards refer to them.
 const COLORS = ["yellow","orange","red","pink","purple","lilac","blue","sky","teal","green","grey","plain"];
 const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
+const INKS = ["ink","red","blue","green","orange"];
 const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
 const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -365,14 +507,28 @@ function sanitizeBoard(o){
     seen.add(id);
     return { id, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: clamp(Math.round(+c.w || 260), 180, 640),
       title: String(c.title ?? "").slice(0, 300), summary: String(c.summary ?? "").slice(0, 1000), body: String(c.body ?? "").slice(0, 40000),
-      color: COLORS.includes(c.color) ? c.color : "plain", open: !!c.open };
+      color: COLORS.includes(c.color) ? c.color : "plain", open: !!c.open, fields: cleanFields(c.fields), priority: clamp(Math.round(+c.priority || 0), 0, 10) };
   });
   const ids = new Set(cards.map(c => c.id));
   const edges = (Array.isArray(o.edges) ? o.edges : []).filter(e => e && ids.has(e.from) && ids.has(e.to) && e.from !== e.to)
     .map(e => ({ id: (typeof e.id === "string" && SAFE_ID.test(e.id)) ? e.id : uid(), from: e.from, to: e.to }));
-  return { name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
+  const colSeen = new Set();
+  const columns = (Array.isArray(o.columns) ? o.columns : []).filter(x => x && typeof x.id === "string" && SAFE_ID.test(x.id) && !colSeen.has(x.id) && colSeen.add(x.id))
+    .slice(0, 40).map(x => ({ id: x.id, name: String(x.name ?? "Column").slice(0, 60) || "Column" }));
+  const strokes = (Array.isArray(o.strokes) ? o.strokes : []).filter(k => k && Array.isArray(k.p) && k.p.length >= 2).slice(0, 3000).map(k => {
+    const pts = k.p.slice(0, 20000).map(n => Math.round((+n || 0) * 10) / 10);
+    if (pts.length % 2) pts.pop();
+    return { id: (typeof k.id === "string" && SAFE_ID.test(k.id)) ? k.id : uid(), c: INKS.includes(k.c) ? k.c : "ink", w: clamp(+k.w || 4, 1, 24), p: pts };
+  });
+  return { name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, columns, strokes, updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
 }
-function serialize(b){ return { name: b.name, cards: b.cards, edges: b.edges, updatedAt: b.updatedAt || Date.now(), by: editorName || "someone", v: 1 }; }
+function cleanFields(f){
+  const out = {};
+  if (f && typeof f === "object" && !Array.isArray(f))
+    for (const [k, v] of Object.entries(f).slice(0, 60)) if (SAFE_ID.test(k) && v != null && v !== "") out[k] = String(v).slice(0, 5000);
+  return out;
+}
+function serialize(b){ return { name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [], updatedAt: b.updatedAt || Date.now(), by: editorName || "someone", v: 1 }; }
 
 /* ---------- GitHub storage ---------- */
 const b64e = s => { const bytes = new TextEncoder().encode(s); let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
@@ -474,13 +630,15 @@ function makeCardEl(c){
   const el = document.createElement("div");
   el.className = "card";
   el.dataset.id = c.id;
-  el.innerHTML = `<div class="card-head" tabindex="0" role="button">${ICON.chev}<div class="head-text"><div class="title"></div><div class="summary"></div></div>
+  el.innerHTML = `<div class="card-head" tabindex="0" role="button">${ICON.chev}<div class="head-text"><div class="title"></div><div class="summary"></div><div class="fields"></div></div><span class="pbadge" title="Priority"></span>
     <div class="tools"><button class="t-link" title="Link to another card" aria-label="Link to another card">${ICON.link}</button><button class="t-edit" title="Edit card" aria-label="Edit card">${ICON.edit}</button></div></div>
     <div class="wrap"><div class="inner"><div class="slot"></div></div></div><div class="resize" title="Drag to resize"></div>
     ${["t","r","b","l"].map(s => `<button class="port ${s}" data-side="${s}" title="Drag to another card to connect" aria-label="Connect to another card" tabindex="-1"></button>`).join("")}`;
   el._head = el.querySelector(".card-head");
   el._title = el.querySelector(".title");
   el._summary = el.querySelector(".summary");
+  el._fields = el.querySelector(".fields");
+  el._pb = el.querySelector(".pbadge");
   el._slot = el.querySelector(".slot");
   el._mode = null; el._body = null;
   wireCard(el, c.id);
@@ -489,19 +647,27 @@ function makeCardEl(c){
 
 function updateCardEl(el, c){
   const editing = editingId === c.id;
-  el.className = `card c-${c.color}` + ((c.open || editing) ? " open" : "") + (editing ? " editing" : "") +
+  el.className = `card ${tintClass(c)}` + ((c.open || editing) ? " open" : "") + (editing ? " editing" : "") +
     (selected && selected.type === "card" && selected.id === c.id ? " sel" : "") + (dragId === c.id ? " dragging" : "") +
     (linkFrom === c.id ? " link-src" : "") + (!c.body.trim() ? " empty-body" : "");
   el.style.width = c.w + "px";
   if (el._title.textContent !== (c.title || "Untitled")) el._title.textContent = c.title || "Untitled";
   if (el._summary.textContent !== c.summary) el._summary.textContent = c.summary;
+  const pb = c.priority ? String(c.priority) : "";
+  if (el._pb.textContent !== pb){ el._pb.textContent = pb; el._pb.style.setProperty("--pc", c.priority ? `var(--p${c.priority})` : "transparent"); el._pb.title = c.priority ? `Priority ${c.priority} (1 is highest)` : ""; }
+  const chips = (board.columns || []).filter(col => c.fields[col.id]).map(col => [col.name, c.fields[col.id]]);
+  const fk = JSON.stringify(chips);
+  if (el._fk !== fk){
+    el._fk = fk;
+    el._fields.replaceChildren(...chips.map(([n, v]) => { const s = document.createElement("span"); s.className = "chip"; const b = document.createElement("b"); b.textContent = n + ": "; s.append(b, v.split("\n")[0]); s.title = n + ": " + v; return s; }));
+  }
   el._head.setAttribute("aria-expanded", String(!!(c.open || editing)));
   if (editing){
     if (el._mode !== "edit") buildEditor(el, c);
-  } else if (el._mode !== "view" || el._body !== c.body){
-    el._slot.innerHTML = `<div class="body">${md(c.body)}</div>`;
-    el._mode = "view"; el._body = c.body;
-  }
+  } else if (el._mode !== "view" || el._body !== c.body + "\u0000" + c.priority){
+    el._slot.innerHTML = `<div class="body">${prioHTML(c.priority)}${md(c.body)}</div>`;
+    el._mode = "view"; el._body = c.body + "\u0000" + c.priority;
+  } else if (el._mode === "edit") markPrio(el, c.priority);
 }
 
 function buildEditor(el, c){
@@ -509,13 +675,20 @@ function buildEditor(el, c){
   const id = c.id;
   el._slot.innerHTML = `<div class="edit">
     <label>Title<input id="ti-${id}" maxlength="300"></label>
+    ${prioHTML(c.priority)}
     <label><div>Summary <span>(always visible)</span></div><input id="su-${id}" maxlength="1000"></label>
+    ${(board.columns || []).map(col => `<label>${esc(col.name)}<input id="fx-${id}-${col.id}" data-col="${col.id}" maxlength="5000"></label>`).join("")}
     <label><div>Detail <span>(shown when unfolded)</span></div><textarea id="bo-${id}"></textarea></label>
     <div class="hint">Start a line with <code>##</code> for a section that folds open on its own, <code>-</code> for bullets, <code>#</code> for a small heading. Use <code>**bold**</code> and <code>[link](https://…)</code>.</div>
     <div class="swatches" role="group" aria-label="Card colour">${COLORS.map(k => `<button class="sw" data-c="${k}" style="background:var(--t-${k})" title="${k}" aria-label="${k}"></button>`).join("")}</div>
     <div class="edit-actions"><button class="btn del">Delete card</button><button class="btn primary done">Done</button></div></div>`;
   const ti = el._slot.querySelector("#ti-" + id), su = el._slot.querySelector("#su-" + id), bo = el._slot.querySelector("#bo-" + id);
   ti.value = c.title; su.value = c.summary; bo.value = c.body;
+  el._slot.querySelectorAll("input[data-col]").forEach(inp => {
+    inp.value = c.fields[inp.dataset.col] || "";
+    inp.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; if (inp.value) cc.fields[inp.dataset.col] = inp.value; else delete cc.fields[inp.dataset.col]; updateCardEl(el, cc); markDirty(); });
+    inp.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); stopEditing(); } });
+  });
   const size = () => { bo.style.height = "auto"; bo.style.height = Math.max(110, bo.scrollHeight + 2) + "px"; };
   const touch = () => { if (!editUndoPushed){ pushUndo(); editUndoPushed = true; } };
   ti.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; cc.title = ti.value; updateCardEl(el, cc); markDirty(); });
@@ -559,6 +732,8 @@ function renderCards(){
   let prev = edgeDel;
   for (const c of board.cards){ const el = els.get(c.id); if (prev.nextSibling !== el) world.insertBefore(el, prev.nextSibling); prev = el; }
   scheduleLayout();
+  drawInk();
+  if (mode === "table" && !tableBusy()) renderTable();
 }
 function clearCards(){ for (const [, el] of els){ ro.unobserve(el); el.remove(); } els.clear(); renderPos.clear(); }
 
@@ -688,6 +863,7 @@ function wireCard(el, id){
     if (!selected || selected.id !== id) select({ type: "card", id });
   });
   el.addEventListener("dblclick", e => e.stopPropagation());
+  el._slot.addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (b){ e.stopPropagation(); setPriority(id, +b.dataset.p); } });
   el.querySelectorAll(".port").forEach(p => p.addEventListener("pointerdown", e => startConnect(e, id, p)));
   const rz = el.querySelector(".resize");
   rz.addEventListener("pointerdown", e => {
@@ -749,7 +925,7 @@ function addCardAt(x, y){
   if (!board) return;
   pushUndo();
   const color = ls.get("fb-color", "yellow");
-  const c = { id: uid(), x: Math.round(x), y: Math.round(y), w: 260, title: "New topic", summary: "", body: "", color: COLORS.includes(color) ? color : "yellow", open: true };
+  const c = { id: uid(), x: Math.round(x), y: Math.round(y), w: 260, title: "New topic", summary: "", body: "", color: COLORS.includes(color) ? color : "yellow", open: true, fields: {}, priority: 0 };
   board.cards.push(c); markDirty();
   startEditing(c.id, true);
 }
@@ -769,9 +945,9 @@ function deleteCard(id){
 }
 
 /* ---------- undo ---------- */
-const snap = () => JSON.stringify({ cards: board.cards, edges: board.edges });
+const snap = () => JSON.stringify({ cards: board.cards, edges: board.edges, columns: board.columns, strokes: board.strokes });
 function pushUndo(){ if (!board) return; undoStack.push(snap()); if (undoStack.length > 150) undoStack.shift(); redoStack.length = 0; updUndo(); }
-function restoreSnap(s){ const o = sanitizeBoard({ ...JSON.parse(s), name: board.name }); board.cards = o.cards; board.edges = o.edges; editingId = null; selected = null; renderCards(); markDirty(); }
+function restoreSnap(s){ const o = sanitizeBoard({ ...JSON.parse(s), name: board.name }); board.cards = o.cards; board.edges = o.edges; board.columns = o.columns; board.strokes = o.strokes; editingId = null; selected = null; renderCards(); markDirty(); }
 function doUndo(){ if (!undoStack.length) return; redoStack.push(snap()); restoreSnap(undoStack.pop()); updUndo(); }
 function doRedo(){ if (!redoStack.length) return; undoStack.push(snap()); restoreSnap(redoStack.pop()); updUndo(); }
 function updUndo(){ $("#undoBtn").disabled = !undoStack.length; $("#redoBtn").disabled = !redoStack.length; }
@@ -792,10 +968,11 @@ function zoomAt(cx, cy, f){
 }
 function zoomCenter(f){ const r = vp.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, f); }
 function fitView(){
-  if (!board || !board.cards.length){ view = { x: 40, y: 30, s: 1 }; applyView(); return; }
+  if (!board || (!board.cards.length && !board.strokes.length)){ view = { x: 40, y: 30, s: 1 }; applyView(); return; }
   layout();
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const r of renderPos.values()){ x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h); }
+  for (const k of board.strokes) for (let i = 0; i < k.p.length; i += 2){ x0 = Math.min(x0, k.p[i]); x1 = Math.max(x1, k.p[i]); y0 = Math.min(y0, k.p[i + 1]); y1 = Math.max(y1, k.p[i + 1]); }
   const R = vp.getBoundingClientRect(), pad = 48;
   const s = clamp(Math.min((R.width - pad * 2) / (x1 - x0), (R.height - pad * 2) / (y1 - y0)), 0.2, 1.1);
   view = { s, x: (R.width - (x1 - x0) * s) / 2 - x0 * s, y: Math.max(pad / 2, (R.height - (y1 - y0) * s) / 2 - y0 * s) };
@@ -809,7 +986,7 @@ vp.addEventListener("wheel", e => {
 }, { passive: false });
 
 vp.addEventListener("pointerdown", e => {
-  if (e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help")) return;
+  if (inkMode || e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help,.inkbar,.plegend")) return;
   if (e.button !== 0 && e.button !== 1) return;
   if (linkMode) setLinkMode(false);
   if (editingId) stopEditing();
@@ -821,7 +998,7 @@ vp.addEventListener("pointerdown", e => {
   vp.addEventListener("pointermove", move); vp.addEventListener("pointerup", up); vp.addEventListener("pointercancel", up);
 });
 vp.addEventListener("dblclick", e => {
-  if (e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help") || !board) return;
+  if (inkMode || e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help,.inkbar,.plegend") || !board) return;
   const r = vp.getBoundingClientRect();
   addCardAt((e.clientX - r.left - view.x) / view.s - 20, (e.clientY - r.top - view.y) / view.s - 20);
 });
@@ -875,7 +1052,7 @@ window.addEventListener("beforeunload", e => { if (dirty){ mirrorLocal(); flush(
 
 /* Pick up other people's changes to the open board. Conditional requests don't use up GitHub's rate limit. */
 async function poll(){
-  if (!GH || !boardId || dirty || dragId || editingId || document.hidden || stopped) return;
+  if (!GH || !boardId || dirty || dragId || editingId || tableBusy() || document.hidden || stopped) return;
   const id = boardId;
   let r;
   try { r = await gh("GET", `contents/boards/${id}.json?ref=${encodeURIComponent(GH.branch)}`, null, etags[id] ? { "If-None-Match": etags[id] } : {}); }
@@ -883,7 +1060,7 @@ async function poll(){
   if (r.status === 304 || !r.ok) return;
   etags[id] = r.headers.get("ETag");
   const j = await r.json();
-  if (j.sha === shas[id] || id !== boardId || dirty || dragId || editingId) return;
+  if (j.sha === shas[id] || id !== boardId || dirty || dragId || editingId || tableBusy()) return;
   try {
     const data = sanitizeBoard(JSON.parse(await contentOf(j)));
     shas[id] = j.sha; boardData[id] = data; board = clone(data);
@@ -941,6 +1118,7 @@ function showEmpty(){
   clearCards(); board = null; boardId = null;
   $("#boardName").value = ""; $("#boardName").disabled = true;
   $("#emptyState").hidden = false; edgeG.innerHTML = ""; edgeDel.hidden = true;
+  if (mode === "table") renderTable();
   setStatus("saved", "No boards");
 }
 async function deleteBoard(){
@@ -1019,9 +1197,12 @@ $("#moreBtn").addEventListener("click", e => {
 const slug = s => (s || "board").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "board";
 async function exportBoards(list, name){
   if (dirty) await flush();
-  const data = JSON.stringify({ app: "foldout-board", v: 1, exportedAt: new Date().toISOString(), boards: list.map(b => ({ name: b.name, cards: b.cards, edges: b.edges })) }, null, 2);
-  const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
-  const a = document.createElement("a"); a.href = url; a.download = name + ".json"; document.body.appendChild(a); a.click(); a.remove();
+  const data = JSON.stringify({ app: "foldout-board", v: 1, exportedAt: new Date().toISOString(), boards: list.map(b => ({ name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [] })) }, null, 2);
+  download(name + ".json", data, "application/json");
+}
+function download(filename, data, type){
+  const url = URL.createObjectURL(new Blob([data], { type }));
+  const a = document.createElement("a"); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 $("#importFile").addEventListener("change", e => {
@@ -1076,7 +1257,7 @@ $("#saveVForm").addEventListener("submit", async e => {
   if (await saveVersion(name)){ $("#vName").value = ""; toast(`Saved version “${name}”.`); }
 });
 async function saveVersion(name){
-  const v = { name: name.slice(0, 80), createdAt: Date.now(), by: editorName, cards: clone(board.cards), edges: clone(board.edges) };
+  const v = { name: name.slice(0, 80), createdAt: Date.now(), by: editorName, cards: clone(board.cards), edges: clone(board.edges), columns: clone(board.columns), strokes: clone(board.strokes) };
   const path = `versions/${boardId}/${v.createdAt}-${slug(name).slice(0, 40)}.json`;
   try { await queueWrite(() => writeFile(path, JSON.stringify(v, null, 2) + "\n", undefined, `Version “${v.name}” of “${board.name}”${who()}`)); }
   catch { toast("Couldn't save that version. Try again in a moment."); return false; }
@@ -1098,8 +1279,8 @@ function sec(list, text){ const h = document.createElement("div"); h.className =
 async function restoreFrom(data, label){
   if (dirty) await flush();     // current state goes into history first, so nothing is lost
   pushUndo();
-  const o = sanitizeBoard({ cards: data.cards, edges: data.edges, name: board.name });
-  board.cards = o.cards; board.edges = o.edges; editingId = null; selected = null;
+  const o = sanitizeBoard({ cards: data.cards, edges: data.edges, columns: data.columns || board.columns, strokes: data.strokes || [], name: board.name });
+  board.cards = o.cards; board.edges = o.edges; board.columns = o.columns; board.strokes = o.strokes; editingId = null; selected = null;
   clearCards(); renderCards(); markDirty();
   toast(`Restored ${label}. The layout you had is still in History.`);
 }
@@ -1148,8 +1329,340 @@ async function loadHistory(){
   list.appendChild(repoLink);
 }
 
+/* ---------- priority + colour mode ---------- */
+let colorMode = ls.get("fb-cmode", "custom") === "priority" ? "priority" : "custom";
+function tintClass(c){ return colorMode === "priority" ? (c.priority ? "c-p" + c.priority : "c-plain") : "c-" + c.color; }
+function prioHTML(p){
+  return `<div class="prow"><span>Priority</span><div class="pp" role="group" aria-label="Priority, 1 is highest">` +
+    Array.from({ length: 10 }, (_, i) => `<button type="button" data-p="${i + 1}" class="${p === i + 1 ? "cur" : ""}" style="--pc:var(--p${i + 1})" aria-pressed="${p === i + 1}" title="${i === 0 ? "1: highest" : i === 9 ? "10: lowest" : i + 1}">${i + 1}</button>`).join("") + `</div></div>`;
+}
+function markPrio(el, p){ el._slot.querySelectorAll("[data-p]").forEach(b => { const on = +b.dataset.p === p; b.classList.toggle("cur", on); b.setAttribute("aria-pressed", String(on)); }); }
+function setPriority(id, n){
+  const c = getCard(id); if (!c) return;
+  pushUndo();
+  c.priority = c.priority === n ? 0 : n;     // click the current number again to clear it
+  const el = els.get(id); if (el){ updateCardEl(el, c); markPrio(el, c.priority); }
+  markDirty();
+}
+function setColorMode(m){
+  colorMode = m === "priority" ? "priority" : "custom"; ls.set("fb-cmode", colorMode);
+  document.querySelectorAll("#cmode [data-cm]").forEach(b => b.classList.toggle("on", b.dataset.cm === colorMode));
+  $("#plegend").hidden = colorMode !== "priority";
+  $("#help").hidden = colorMode === "priority";
+  if (board) renderCards();
+}
+$("#cmode").addEventListener("click", e => { const b = e.target.closest("[data-cm]"); if (b) setColorMode(b.dataset.cm); });
+
+/* ---------- marker ---------- */
+let inkMode = false, erasing = false;
+let inkColor = INKS.includes(ls.get("fb-ink", "red")) ? ls.get("fb-ink", "red") : "red";
+let inkW = [2, 4, 9].includes(ls.get("fb-inkw", 4)) ? ls.get("fb-inkw", 4) : 4;
+const inkG = $("#inkG"), inkCatch = $("#inkCatch");
+function inkPath(p){
+  if (p.length < 4) return `M${p[0]} ${p[1]}l0.1 0`;
+  let d = `M${p[0]} ${p[1]}`;
+  for (let i = 2; i < p.length - 2; i += 2) d += `Q${p[i]} ${p[i + 1]} ${((p[i] + p[i + 2]) / 2).toFixed(1)} ${((p[i + 1] + p[i + 3]) / 2).toFixed(1)}`;
+  return d + `L${p[p.length - 2]} ${p[p.length - 1]}`;
+}
+function drawInk(){
+  if (!board){ inkG.innerHTML = ""; return; }
+  inkG.innerHTML = board.strokes.map(k => `<path class="ink-${k.c}" stroke-width="${k.w}" d="${inkPath(k.p)}"/>`).join("");
+}
+function strokeHit(k, x, y, r){
+  const rr = r + k.w / 2, p = k.p;
+  for (let i = 0; i < p.length; i += 2){
+    if (Math.hypot(p[i] - x, p[i + 1] - y) <= rr) return true;
+    if (i + 3 < p.length){
+      const ax = p[i], ay = p[i + 1], bx = p[i + 2], by = p[i + 3], dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+      const t = L ? clamp(((x - ax) * dx + (y - ay) * dy) / L, 0, 1) : 0;
+      if (Math.hypot(ax + t * dx - x, ay + t * dy - y) <= rr) return true;
+    }
+  }
+  return false;
+}
+function updateInkBar(){
+  document.querySelectorAll("#inkBar [data-ink]").forEach(b => b.classList.toggle("cur", !erasing && b.dataset.ink === inkColor));
+  document.querySelectorAll("#inkBar [data-w]").forEach(b => { b.classList.toggle("cur", !erasing && +b.dataset.w === inkW); b.style.color = `var(--m-${inkColor})`; });
+  $("#inkErase").classList.toggle("cur", erasing);
+  inkCatch.classList.toggle("erase", erasing);
+}
+function setInk(on){
+  inkMode = on;
+  $("#inkBtn").classList.toggle("on", on);
+  inkCatch.hidden = !on; $("#inkBar").hidden = !on;
+  if (on){ if (linkMode) setLinkMode(false); if (editingId) stopEditing(); select(null); updateInkBar(); }
+}
+$("#inkBtn").addEventListener("click", () => setInk(!inkMode));
+$("#inkDone").addEventListener("click", () => setInk(false));
+$("#inkErase").addEventListener("click", () => { erasing = !erasing; updateInkBar(); });
+$("#inkBar").addEventListener("click", e => {
+  const c = e.target.closest("[data-ink]"); if (c){ inkColor = c.dataset.ink; erasing = false; ls.set("fb-ink", inkColor); updateInkBar(); return; }
+  const w = e.target.closest("[data-w]"); if (w){ inkW = +w.dataset.w; erasing = false; ls.set("fb-inkw", inkW); updateInkBar(); }
+});
+inkCatch.addEventListener("pointerdown", e => {
+  if (e.button !== 0 || !board) return;
+  e.preventDefault(); e.stopPropagation();
+  inkCatch.setPointerCapture(e.pointerId);
+  const toW = ev => { const R = vp.getBoundingClientRect(); return [(ev.clientX - R.left - view.x) / view.s, (ev.clientY - R.top - view.y) / view.s]; };
+  let move, done;
+  if (erasing){
+    let pushed = false;
+    move = ev => {
+      const [x, y] = toW(ev);
+      const keep = board.strokes.filter(k => !strokeHit(k, x, y, 8 / view.s));
+      if (keep.length !== board.strokes.length){ if (!pushed){ pushUndo(); pushed = true; } board.strokes = keep; drawInk(); }
+    };
+    done = () => { if (pushed) markDirty(); };
+  } else {
+    pushUndo();
+    const [x0, y0] = toW(e);
+    const k = { id: uid(), c: inkColor, w: inkW, p: [+x0.toFixed(1), +y0.toFixed(1)] };
+    board.strokes.push(k);
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("class", "ink-" + k.c); path.setAttribute("stroke-width", k.w); path.setAttribute("d", inkPath(k.p));
+    inkG.appendChild(path);
+    move = ev => {
+      const [x, y] = toW(ev), p = k.p;
+      if (Math.hypot(x - p[p.length - 2], y - p[p.length - 1]) < 1.5 / view.s) return;
+      p.push(+x.toFixed(1), +y.toFixed(1)); path.setAttribute("d", inkPath(p));
+    };
+    done = () => markDirty();
+  }
+  move(e);
+  const up = () => { inkCatch.removeEventListener("pointermove", move); inkCatch.removeEventListener("pointerup", up); inkCatch.removeEventListener("pointercancel", up); done(); };
+  inkCatch.addEventListener("pointermove", move); inkCatch.addEventListener("pointerup", up); inkCatch.addEventListener("pointercancel", up);
+});
+
+/* ---------- table view: one row per card, same data as the board ---------- */
+let mode = "board";
+let tSort = { key: null, dir: 1 };
+let tUndoPushed = false;
+const BASE_COLS = [{ key: "title", name: "Title", ph: "Untitled" }, { key: "summary", name: "Summary", ph: "" }, { key: "body", name: "Detail", ph: "" }];
+const tvBody = $("#tvBody");
+function tableBusy(){ const a = document.activeElement; return mode === "table" && !!(a && a.closest && a.closest("#tv .cell")); }
+const getVal = (c, k) => k.startsWith("f:") ? (c.fields[k.slice(2)] || "") : (c[k] || "");
+function setVal(c, k, v){
+  if (k.startsWith("f:")){ const id = k.slice(2); if (v) c.fields[id] = v; else delete c.fields[id]; }
+  else c[k] = k === "body" ? v : v.replace(/\n+/g, " ");
+}
+function tableRows(){
+  const rows = board.cards.slice();
+  if (!tSort.key) return rows.sort((a, b) => (a.x < 300 ? 0 : 1) - (b.x < 300 ? 0 : 1) || a.y - b.y || a.x - b.x);
+  const k = tSort.key, val = c => k === "color" ? COLORS.indexOf(c.color) : k === "priority" ? (c.priority || 99) : getVal(c, k);
+  return rows.sort((a, b) => { const x = val(a), y = val(b); return (typeof x === "number" ? x - y : String(x).localeCompare(String(y), undefined, { numeric: true, sensitivity: "base" })) * tSort.dir; });
+}
+function linkMap(){
+  const titles = new Map(board.cards.map(c => [c.id, c.title || "Untitled"]));
+  const links = {};
+  for (const e of board.edges){ (links[e.from] ||= []).push(titles.get(e.to)); (links[e.to] ||= []).push(titles.get(e.from)); }
+  return links;
+}
+const arrow = k => tSort.key === k ? `<span class="arrow">${tSort.dir > 0 ? "▲" : "▼"}</span>` : "";
+function setEditable(d){ try { d.contentEditable = "plaintext-only"; } catch { d.contentEditable = "true"; } }
+function renderTable(){
+  if (!board){ tvBody.innerHTML = '<p class="tv-empty">Open or create a board to see it as a table.</p>'; return; }
+  const keep = [tvBody.scrollLeft, tvBody.scrollTop];
+  const cols = [...BASE_COLS.map(c => ({ ...c, cls: "k-" + c.key })), ...board.columns.map(c => ({ key: "f:" + c.id, name: c.name, ph: "", cls: "k-custom", col: c }))];
+  const links = linkMap();
+  const t = document.createElement("table"); t.className = "grid";
+  const hr = document.createElement("tr");
+  const th = (cls, html) => { const h = document.createElement("th"); h.className = cls; h.innerHTML = html; hr.appendChild(h); return h; };
+  th("k-color", `<div class="th"><button class="sort" data-sort="color" title="Sort by colour" aria-label="Sort by colour">●${arrow("color")}</button></div>`);
+  th("k-prio", `<div class="th"><button class="sort" data-sort="priority" title="Sort by priority">Priority${arrow("priority")}</button></div>`);
+  for (const c of cols){
+    const h = th(c.cls, `<div class="th"><button class="sort" data-sort="${c.key}"></button>` + (c.col ? `<button class="colx" data-rencol="${c.col.id}" title="Rename column" aria-label="Rename column">✎</button><button class="colx" data-delcol="${c.col.id}" title="Delete column" aria-label="Delete column">✕</button>` : "") + `</div>`);
+    const b = h.querySelector(".sort"); b.textContent = c.name; b.insertAdjacentHTML("beforeend", arrow(c.key)); b.title = "Sort by " + c.name;
+  }
+  th("k-links", `<div class="th">Linked to</div>`); th("k-del", "");
+  const thead = document.createElement("thead"); thead.appendChild(hr); t.appendChild(thead);
+  const tb = document.createElement("tbody");
+  for (const c of tableRows()){
+    const tr = document.createElement("tr"); tr.dataset.id = c.id;
+    const tdc = document.createElement("td"); tdc.className = "k-color";
+    tdc.innerHTML = `<button style="background:var(--t-${c.color})" title="Colour: ${c.color}" aria-label="Change colour"></button>`; tr.appendChild(tdc);
+    for (const col of cols){
+      const td = document.createElement("td"); td.className = col.cls;
+      const d = document.createElement("div"); d.className = "cell"; setEditable(d); d.dataset.k = col.key; if (col.ph) d.dataset.ph = col.ph;
+      d.setAttribute("role", "textbox"); d.setAttribute("aria-label", col.name);
+      d.textContent = getVal(c, col.key); td.appendChild(d); tr.appendChild(td);
+    }
+    const tp = document.createElement("td"); tp.className = "k-prio";
+    tp.innerHTML = `<select aria-label="Priority">${['<option value="0">–</option>', ...Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`)].join("")}</select>`;
+    tp.querySelector("select").value = String(c.priority || 0);
+    tr.insertBefore(tp, tr.children[1]);
+    const tl = document.createElement("td"); tl.className = "k-links"; tl.textContent = (links[c.id] || []).join(", "); tr.appendChild(tl);
+    const td = document.createElement("td"); td.className = "k-del"; td.innerHTML = `<button title="Delete this card" aria-label="Delete row">✕</button>`; tr.appendChild(td);
+    tb.appendChild(tr);
+  }
+  t.appendChild(tb);
+  const tf = document.createElement("tfoot"); tf.innerHTML = `<tr><td colspan="${cols.length + 4}"><button data-addrow>+ Add row</button></td></tr>`; t.appendChild(tf);
+  tvBody.replaceChildren(t);
+  tvBody.scrollLeft = keep[0]; tvBody.scrollTop = keep[1];
+}
+const cellText = d => d.innerText.replace(/ /g, " ").replace(/\n$/, "");
+function focusCell(d){
+  if (!d) return;
+  d.focus();
+  const r = document.createRange(); r.selectNodeContents(d); r.collapse(false);
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+function moveDown(d){
+  const next = d.closest("tr").nextElementSibling;
+  if (next) focusCell(next.querySelector(`.cell[data-k="${d.dataset.k}"]`));
+  else if (d.dataset.k === "title") addRow(); else d.blur();
+}
+function newRowCard(){
+  let y = 40;
+  for (const c of board.cards) if (c.x < 300) y = Math.max(y, c.y + 110);
+  const color = ls.get("fb-color", "yellow");
+  const c = { id: uid(), x: 40, y, w: 260, title: "", summary: "", body: "", color: COLORS.includes(color) ? color : "yellow", open: false, fields: {}, priority: 0 };
+  board.cards.push(c);
+  return c;
+}
+function addRow(){
+  if (!board) return;
+  pushUndo(); const c = newRowCard(); markDirty(); renderTable();
+  const tr = tvBody.querySelector(`tr[data-id="${c.id}"]`);
+  if (tr){ tr.classList.add("flash"); tr.scrollIntoView({ block: "nearest" }); focusCell(tr.querySelector('.cell[data-k="title"]')); }
+}
+function parseTSV(text){
+  text = text.replace(/\r\n?/g, "\n"); if (text.endsWith("\n")) text = text.slice(0, -1);
+  const rows = [[]]; let f = "", q = false;
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (q){ if (ch === '"'){ if (text[i + 1] === '"'){ f += '"'; i++; } else q = false; } else f += ch; continue; }
+    if (ch === '"' && f === ""){ q = true; continue; }
+    if (ch === "\t"){ rows[rows.length - 1].push(f); f = ""; }
+    else if (ch === "\n"){ rows[rows.length - 1].push(f); f = ""; rows.push([]); }
+    else f += ch;
+  }
+  rows[rows.length - 1].push(f);
+  return rows;
+}
+function gridPaste(d, grid){
+  pushUndo();
+  const keys = [...BASE_COLS.map(c => c.key), ...board.columns.map(c => "f:" + c.id)];
+  const k0 = keys.indexOf(d.dataset.k);
+  const width = Math.max(...grid.map(r => r.length));
+  while (k0 + width > keys.length){ const col = { id: uid(), name: "Column " + (board.columns.length + 1) }; board.columns.push(col); keys.push("f:" + col.id); }
+  // Pasted rows become new cards, so a paste can never overwrite existing cards.
+  // The one exception: the row you pasted into, if it is completely blank, gets filled first.
+  const here = getCard(d.closest("tr").dataset.id);
+  const blank = c => c && !c.title && !c.summary && !c.body && !Object.keys(c.fields).length;
+  let added = 0;
+  grid.forEach((row, i) => {
+    let c = (i === 0 && blank(here)) ? here : null;
+    if (!c){ c = newRowCard(); added++; }
+    row.forEach((v, j) => setVal(c, keys[k0 + j], v.trim()));
+  });
+  markDirty(); renderTable();
+  toast(`Pasted ${grid.length} row${grid.length > 1 ? "s" : ""}` + (added ? `, adding ${added} card${added > 1 ? "s" : ""} to the board.` : "."));
+}
+tvBody.addEventListener("change", e => {
+  const sel = e.target.closest(".k-prio select"); if (!sel) return;
+  const c = getCard(sel.closest("tr").dataset.id); if (!c) return;
+  pushUndo(); c.priority = clamp(+sel.value || 0, 0, 10); markDirty();
+});
+tvBody.addEventListener("focusin", e => { if (e.target.classList && e.target.classList.contains("cell")) tUndoPushed = false; });
+tvBody.addEventListener("input", e => {
+  const d = e.target.closest(".cell"); if (!d) return;
+  const c = getCard(d.closest("tr").dataset.id); if (!c) return;
+  if (!tUndoPushed){ pushUndo(); tUndoPushed = true; }
+  setVal(c, d.dataset.k, cellText(d)); markDirty();
+});
+tvBody.addEventListener("focusout", e => {
+  if (!e.target.closest || !e.target.closest(".cell") || !tUndoPushed) return;
+  if (e.relatedTarget && tvBody.contains(e.relatedTarget)) return;
+  setTimeout(() => { if (!tableBusy()) renderTable(); }, 0);   // refresh "Linked to" names after an edit
+});
+tvBody.addEventListener("keydown", e => {
+  const d = e.target.closest(".cell"); if (!d) return;
+  if (e.key === "Escape"){ d.blur(); return; }
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey || (!e.shiftKey && d.dataset.k !== "body"))){ e.preventDefault(); moveDown(d); }
+});
+tvBody.addEventListener("paste", e => {
+  const d = e.target.closest(".cell"); if (!d) return;
+  e.preventDefault();
+  const text = (e.clipboardData && e.clipboardData.getData("text/plain")) || "";
+  const grid = parseTSV(text);
+  const isGrid = text.includes("\t") || (grid.length > 1 && d.dataset.k !== "body");
+  if (isGrid) gridPaste(d, grid); else document.execCommand("insertText", false, text);
+});
+tvBody.addEventListener("click", e => {
+  const sb = e.target.closest("[data-sort]");
+  if (sb){ const k = sb.dataset.sort; tSort = tSort.key !== k ? { key: k, dir: 1 } : tSort.dir > 0 ? { key: k, dir: -1 } : { key: null, dir: 1 }; renderTable(); return; }
+  const rc = e.target.closest("[data-rencol]"); if (rc){ renameColumn(rc.dataset.rencol); return; }
+  const dc = e.target.closest("[data-delcol]"); if (dc){ deleteColumn(dc.dataset.delcol); return; }
+  if (e.target.closest("[data-addrow]")){ addRow(); return; }
+  const tr = e.target.closest("tbody tr"); if (!tr) return;
+  if (e.target.closest(".k-del button")){ deleteCard(tr.dataset.id); renderTable(); return; }
+  const cb = e.target.closest(".k-color button");
+  if (cb){
+    const c = getCard(tr.dataset.id); if (!c) return;
+    openMenu(cb, m => {
+      const g = document.createElement("div"); g.className = "swm";
+      COLORS.forEach(k => {
+        const b = document.createElement("button"); b.style.background = `var(--t-${k})`; b.title = k; b.setAttribute("aria-label", k);
+        if (k === c.color) b.className = "cur";
+        b.onclick = () => { closeMenu(); pushUndo(); c.color = k; ls.set("fb-color", k); markDirty(); renderTable(); };
+        g.appendChild(b);
+      });
+      m.appendChild(g);
+    });
+  }
+});
+function promptDialog(title, value, okLabel, onOk){
+  dialog((d, close) => {
+    d.innerHTML = `<h3></h3><form><input type="text" id="promptInput" maxlength="60" aria-label="Name"><div class="row"><button type="button" class="btn cancel">Cancel</button><button type="submit" class="btn primary ok"></button></div></form>`;
+    d.querySelector("h3").textContent = title; d.querySelector(".ok").textContent = okLabel;
+    const inp = d.querySelector("input"); inp.value = value;
+    d.querySelector(".cancel").onclick = close;
+    d.querySelector("form").onsubmit = ev => { ev.preventDefault(); const v = inp.value.trim(); if (v){ close(); onOk(v); } };
+    setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  });
+}
+function addColumn(){
+  if (!board) return;
+  promptDialog("Add a column", "", "Add column", name => { pushUndo(); board.columns.push({ id: uid(), name }); markDirty(); renderTable(); });
+}
+function renameColumn(id){
+  const col = board.columns.find(c => c.id === id); if (!col) return;
+  promptDialog("Rename column", col.name, "Rename", name => { pushUndo(); col.name = name; markDirty(); renderTable(); });
+}
+function deleteColumn(id){
+  const col = board.columns.find(c => c.id === id); if (!col) return;
+  const n = board.cards.filter(c => c.fields[id]).length;
+  confirmDialog(`Delete the “${col.name}” column?`,
+    n ? `${n} card${n > 1 ? "s have" : " has"} a value in it, which will be removed too. You can undo this, and History keeps every earlier save.` : "No cards have a value in it.",
+    "Delete column", () => { pushUndo(); board.columns = board.columns.filter(c => c.id !== id); board.cards.forEach(c => delete c.fields[id]); markDirty(); renderTable(); });
+}
+function exportCsv(){
+  if (!board) return;
+  const cols = [...BASE_COLS.map(c => ({ k: c.key, n: c.name })), { k: "color", n: "Colour" }, { k: "priority", n: "Priority" }, ...board.columns.map(c => ({ k: "f:" + c.id, n: c.name }))];
+  const links = linkMap();
+  const q = v => /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const lines = [[...cols.map(c => c.n), "Linked to"].map(q).join(",")];
+  for (const c of tableRows()) lines.push([...cols.map(col => col.k === "color" ? c.color : col.k === "priority" ? (c.priority || "") : getVal(c, col.k)), (links[c.id] || []).join("; ")].map(v => q(String(v))).join(","));
+  download(slug(board.name) + ".csv", "﻿" + lines.join("\r\n"), "text/csv");
+}
+$("#tvAddRow").addEventListener("click", addRow);
+$("#tvAddCol").addEventListener("click", addColumn);
+$("#tvCsv").addEventListener("click", exportCsv);
+function setMode(m){
+  mode = m === "table" ? "table" : "board";
+  ls.set("fb-mode", mode);
+  document.body.classList.toggle("mode-table", mode === "table");
+  for (const [id, on] of [["#vBoard", mode === "board"], ["#vTable", mode === "table"]]){ $(id).classList.toggle("on", on); $(id).setAttribute("aria-selected", String(on)); }
+  $("#vp").hidden = mode !== "board"; $("#tv").hidden = mode !== "table";
+  $("#addBtn").lastChild.textContent = mode === "table" ? "Row" : "Card";
+  if (mode === "table"){ if (editingId) stopEditing(); if (linkMode) setLinkMode(false); if (inkMode) setInk(false); renderTable(); }
+  else if (board) renderCards();
+}
+$("#vBoard").addEventListener("click", () => setMode("board"));
+$("#vTable").addEventListener("click", () => setMode("table"));
+
 /* ---------- toolbar + keys ---------- */
-$("#addBtn").addEventListener("click", addCardCenter);
+$("#addBtn").addEventListener("click", () => mode === "table" ? addRow() : addCardCenter());
 $("#linkBtn").addEventListener("click", () => setLinkMode(!linkMode));
 $("#expandAll").addEventListener("click", () => setAllOpen(true));
 $("#collapseAll").addEventListener("click", () => setAllOpen(false));
@@ -1166,10 +1679,12 @@ document.addEventListener("keydown", e => {
   if (!GH) return;
   const typing = e.target.closest && e.target.closest("input,textarea,[contenteditable]");
   const mod = e.metaKey || e.ctrlKey;
+  if (e.key === "Escape" && inkMode){ setInk(false); return; }
   if (e.key === "Escape"){ closeMenu(); if (linkMode) setLinkMode(false); else if (editingId) stopEditing(); else select(null); return; }
   if (mod && e.key.toLowerCase() === "s"){ e.preventDefault(); flush(); return; }
   if (typing) return;
   if (mod && e.key.toLowerCase() === "z"){ e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); return; }
+  if (!mod && e.key.toLowerCase() === "m" && mode === "board" && board){ setInk(!inkMode); return; }
   if (mod && e.key.toLowerCase() === "y"){ e.preventDefault(); doRedo(); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && selected && board){
     e.preventDefault();
@@ -1282,6 +1797,8 @@ async function start(){
 }
 
 applyView();
+setColorMode(colorMode);
+setMode(ls.get("fb-mode", "board"));
 const saved = ls.get("fb-auth", null) || ss.get("fb-auth", null);
 if (saved && saved.token){
   GH = { token: saved.token, owner: saved.owner, repo: saved.repo, branch: saved.branch || "main" };
