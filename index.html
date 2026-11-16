@@ -1966,7 +1966,8 @@ async function loadLocalHistory(list, id){
 }
 
 /* ---------- priority + colour mode ---------- */
-let colorMode = ls.get("fb-cmode", "custom") === "priority" ? "priority" : "custom";
+// Priority colours by default. (New setting name so devices that saved the old default start on priority colours.)
+let colorMode = ls.get("fb-cmode2", "priority") === "custom" ? "custom" : "priority";
 // "auto" = the card takes its colour from its priority; "#rrggbb" = a custom colour.
 function tintClass(c){
   if (colorMode === "priority" || c.color === "auto") return c.priority ? "c-p" + c.priority : "c-plain";
@@ -2001,7 +2002,7 @@ function setPriority(id, n){
   markDirty();
 }
 function setColorMode(m){
-  colorMode = m === "priority" ? "priority" : "custom"; ls.set("fb-cmode", colorMode);
+  colorMode = m === "priority" ? "priority" : "custom"; ls.set("fb-cmode2", colorMode);
   document.querySelectorAll("#cmode [data-cm]").forEach(b => b.classList.toggle("on", b.dataset.cm === colorMode));
   $("#plegend").hidden = colorMode !== "priority";
   $("#help").hidden = colorMode === "priority";
