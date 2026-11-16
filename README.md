@@ -7,6 +7,7 @@ Rewiring Aotearoa's whiteboard of fold-out cards.
 - Drag from the dot on a card's side to another card to connect them, or let go on empty board to make a new linked card.
 - Paste (or drop) pictures, links and text onto the board. Links appear as short pills; hover to switch one to a preview card (previews come from microlink.io, which is sent the link only when you choose *Show as card*).
 - Emoji button: adds an emoji to the board, or into the text you're typing.
+- Cmd/Ctrl + C, X and V copy, cut and paste cards and drawings (between boards too). Unfolded cards also have a Duplicate button.
 - Set a priority from 1 (highest) to 10 on an unfolded card. Colours: 12 presets, a custom colour, or *Auto* (follows priority); the toolbar can also switch the whole board to colour-by-priority.
 - Draw with the marker (M). Each drawing becomes an object: click it to select, drag to move, drag the corner to resize. On an iPad, Apple Pencil draws straight onto the board; fingers pan, pinch to zoom, and never draw once a pencil has been used.
 - The **Table** tab shows the same board as a spreadsheet: one row per card, editable both ways, with your own extra columns. Paste rows from Excel or Google Sheets to add cards (pasting never overwrites existing cards). Export to CSV.

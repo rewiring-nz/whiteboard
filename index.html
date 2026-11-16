@@ -305,6 +305,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .tools button{width:26px; height:26px; display:grid; place-items:center; border:0; border-radius:6px; background:transparent; cursor:pointer; color:var(--muted)}
 .tools button:hover{background:color-mix(in srgb, var(--ink) 9%, transparent); color:var(--ink)}
 .tools svg{width:15px; height:15px}
+.card:not(.open) .t-dup{display:none}
 .wrap{display:grid; grid-template-rows:0fr; transition:grid-template-rows .24s cubic-bezier(.3,.7,.2,1)}
 .card.open .wrap{grid-template-rows:1fr}
 .inner{overflow:hidden; min-height:0}
@@ -508,7 +509,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <button class="btn primary" id="inkDone">Done</button>
   </div>
   <div class="plegend" id="plegend" hidden aria-label="Priority colours, 1 is highest">Priority <span>1 = highest</span><i style="--pc:var(--p1)">1</i><i style="--pc:var(--p2)">2</i><i style="--pc:var(--p3)">3</i><i style="--pc:var(--p4)">4</i><i style="--pc:var(--p5)">5</i><i style="--pc:var(--p6)">6</i><i style="--pc:var(--p7)">7</i><i style="--pc:var(--p8)">8</i><i style="--pc:var(--p9)">9</i><i style="--pc:var(--p10)">10</i></div>
-  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll or drag to pan, <b>pinch</b> or <b>Ctrl/⌘ + scroll</b> to zoom · <b>Apple Pencil</b> draws · <b>Paste</b> pictures, links or text</div>
+  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll or drag to pan, <b>pinch</b> or <b>Ctrl/⌘ + scroll</b> to zoom · <b>Apple Pencil</b> draws · <b>Paste</b> pictures, links or text · <b>⌘C / ⌘V</b> copies cards</div>
   <div class="empty-state" id="emptyState" hidden>
     <div class="empty-card">
       <h2>No boards yet</h2>
@@ -642,7 +643,7 @@ function sanitizeBoard(o){
     if (kind === "image"){ extra.asset = typeof c.asset === "string" && ASSET_ID.test(c.asset) ? c.asset : ""; }
     if (kind === "link"){ extra.url = safeUrl(c.url) || "https://example.com"; extra.disp = c.disp === "card" ? "card" : "pill"; extra.meta = cleanMeta(c.meta, extra.url); }
     if (kind === "emoji"){ extra.emoji = String(c.emoji ?? "").slice(0, 16) || "⭐"; }
-    return { id, kind, ...extra, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: kind === "card" ? clamp(Math.round(+c.w || 260), 180, 640) : clamp(Math.round(+c.w || 200), 24, 1600),
+    return { ...keepUnknown(c, CARD_KEYS), id, kind, ...extra, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: kind === "card" ? clamp(Math.round(+c.w || 260), 180, 640) : clamp(Math.round(+c.w || 200), 24, 1600),
       title: String(c.title ?? "").slice(0, 300), summary: String(c.summary ?? "").slice(0, 1000), body: String(c.body ?? "").slice(0, 40000),
       color: (COLORS.includes(c.color) || c.color === "auto" || /^#[0-9a-f]{6}$/i.test(c.color)) ? String(c.color).toLowerCase() : "plain", open: !!c.open, fields: cleanFields(c.fields), priority: clamp(Math.round(+c.priority || 0), 0, 10) };
   });
@@ -659,7 +660,17 @@ function sanitizeBoard(o){
     if (typeof k.g === "string" && SAFE_ID.test(k.g)) st.g = k.g;
     return st;
   });
-  return { name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, columns, strokes, updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
+  return { ...keepUnknown(o, BOARD_KEYS), name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, columns, strokes, updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
+}
+const CARD_KEYS = new Set(["id","kind","asset","url","disp","meta","emoji","x","y","w","title","summary","body","color","open","fields","priority"]);
+const BOARD_KEYS = new Set(["name","cards","edges","columns","strokes","updatedAt","by","v"]);
+function keepUnknown(o, known){
+  const out = {};
+  for (const [k, v] of Object.entries(o || {})){
+    if (known.has(k) || !/^[A-Za-z][A-Za-z0-9_]{0,40}$/.test(k) || v === undefined || typeof v === "function") continue;
+    try { if (JSON.stringify(v).length <= 20000) out[k] = clone(v); } catch {}
+  }
+  return out;
 }
 function safeUrl(u){
   try { const x = new URL(String(u || "").trim()); return (x.protocol === "https:" || x.protocol === "http:") && x.href.length <= 2000 ? x.href : ""; } catch { return ""; }
@@ -819,6 +830,7 @@ function md(text){
 /* ---------- icons ---------- */
 const ICON = {
   chev: '<svg class="chev" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 4.5L11.5 9 7 13.5"/></svg>',
+  dup: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5"/></svg>',
   edit: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg>',
   link: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 13L13 3M8 3h5v5"/></svg>'
 };
@@ -918,7 +930,7 @@ function makeCardEl(c){
   el.className = "card";
   el.dataset.id = c.id;
   el.innerHTML = `<div class="card-head" tabindex="0" role="button">${ICON.chev}<div class="head-text"><div class="title"></div><div class="summary"></div><div class="fields"></div></div><span class="pbadge" title="Priority"></span>
-    <div class="tools"><button class="t-link" title="Link to another card" aria-label="Link to another card">${ICON.link}</button><button class="t-edit" title="Edit card" aria-label="Edit card">${ICON.edit}</button></div></div>
+    <div class="tools"><button class="t-dup" title="Duplicate card" aria-label="Duplicate card">${ICON.dup}</button><button class="t-link" title="Link to another card" aria-label="Link to another card">${ICON.link}</button><button class="t-edit" title="Edit card" aria-label="Edit card">${ICON.edit}</button></div></div>
     <div class="wrap"><div class="inner"><div class="slot"></div></div></div><div class="resize" title="Drag to resize"></div>
     ${["t","r","b","l"].map(s => `<button class="port ${s}" data-side="${s}" title="Drag to another card to connect" aria-label="Connect to another card" tabindex="-1"></button>`).join("")}`;
   el._head = el.querySelector(".card-head");
@@ -1156,6 +1168,7 @@ function wireCard(el, id){
   }
   el.querySelector(".t-edit").addEventListener("click", e => { e.stopPropagation(); editingId === id ? stopEditing() : startEditing(id, false); });
   el.querySelector(".t-link").addEventListener("click", e => { e.stopPropagation(); setLinkMode(true, id); });
+  el.querySelector(".t-dup").addEventListener("click", e => { e.stopPropagation(); duplicateCard(id); });
   el.querySelector(".wrap").addEventListener("pointerdown", e => {
     e.stopPropagation();
     if (linkMode){ handleLinkClick(id); return; }
@@ -1227,6 +1240,16 @@ function startConnect(e, id, port){
     }
   };
   port.addEventListener("pointermove", move); port.addEventListener("pointerup", up); port.addEventListener("pointercancel", up);
+}
+
+/* A copy goes just to the right of the original, keeping its content, colour and priority. */
+function duplicateCard(id){
+  const c = getCard(id); if (!c) return;
+  if (editingId) stopEditing();
+  pushUndo();
+  const copy = sanitizeBoard({ cards: [{ ...clone(c), id: uid(), x: c.x + c.w + 28, title: c.title ? c.title + " (copy)" : "" }] }).cards[0];
+  board.cards.push(copy); markDirty(); renderCards(); select({ type: "card", id: copy.id });
+  toast("Duplicated. Undo with Cmd/Ctrl + Z.");
 }
 
 function toggleCard(id){
@@ -2303,9 +2326,60 @@ function addTextCard(text, at){
   const el = els.get(c.id); chainAfter(c, el ? el.offsetHeight : 60);
 }
 const isUrl = t => /^https?:\/\/\S+$/i.test(t);
+
+/* Copy, cut and paste cards and drawings (Cmd/Ctrl + C, X, V). The clipboard gets the card as data for
+   Whiteboard and as plain text for other apps. Works between boards and between tabs. */
+const CLIP_TYPE = "application/x-whiteboard+json";
+let clip = null, clipPastes = 0;
+function selectionClip(){
+  if (!board || !selected) return null;
+  if (selected.type === "card"){ const c = getCard(selected.id); return c ? { v: 1, cards: [clone(c)], strokes: [] } : null; }
+  if (selected.type === "ink"){ const st = board.strokes.filter(k => gkey(k) === selected.id); return st.length ? { v: 1, cards: [], strokes: clone(st) } : null; }
+  return null;
+}
+function clipText(d){
+  return d.cards.map(c => c.kind === "link" ? c.url : c.kind === "card" ? [c.title, c.summary, c.body].filter(Boolean).join("\n") : labelOf(c)).join("\n\n") || "Drawing";
+}
+function onCopy(e, cut){
+  if (!board || mode !== "board" || !picker.hidden) return;
+  if (e.target.closest && e.target.closest("input,textarea,[contenteditable],.dialog")) return;
+  if (getSelection && String(getSelection()).length) return;   // copying selected text: leave it alone
+  const d = selectionClip(); if (!d) return;
+  e.preventDefault();
+  clip = d; clipPastes = 0;
+  try { e.clipboardData.setData("text/plain", clipText(d)); e.clipboardData.setData(CLIP_TYPE, JSON.stringify(d)); } catch {}
+  if (cut){ if (selected.type === "card") deleteCard(selected.id); else deleteInkGroup(selected.id); toast("Cut. Paste with Cmd/Ctrl + V."); }
+  else toast(d.cards.length ? "Copied card." : "Copied drawing.");
+}
+document.addEventListener("copy", e => onCopy(e, false));
+document.addEventListener("cut", e => onCopy(e, true));
+function pasteClip(d){
+  clipPastes++;
+  const off = 28 * clipPastes;
+  const xs = [...d.cards.map(c => c.x), ...d.strokes.flatMap(k => k.p.filter((_, i) => i % 2 === 0))];
+  const ys = [...d.cards.map(c => c.y), ...d.strokes.flatMap(k => k.p.filter((_, i) => i % 2 === 1))];
+  let dx = off, dy = off;
+  // If the pointer has moved onto the board since copying, paste where it is.
+  if (lastPtr && Date.now() - lastPtr.t < 8000 && clipPastes === 1 && xs.length){
+    const R = vp.getBoundingClientRect();
+    if (lastPtr.x > R.left && lastPtr.y > R.top){ const p = dropPoint(); dx = p.x - Math.min(...xs) - 20; dy = p.y - Math.min(...ys) - 10; }
+  }
+  pushUndo();
+  const fresh = sanitizeBoard({ cards: d.cards.map(c => ({ ...c, id: uid(), x: c.x + dx, y: c.y + dy })), strokes: [] }).cards;
+  board.cards.push(...fresh);
+  const g = uid();
+  const st = sanitizeBoard({ strokes: d.strokes.map(k => ({ ...k, id: uid(), g, p: k.p.map((v, i) => v + (i % 2 ? dy : dx)) })) }).strokes;
+  board.strokes.push(...st);
+  markDirty(); renderCards();
+  if (fresh.length) select({ type: "card", id: fresh[fresh.length - 1].id }); else if (st.length) select({ type: "ink", id: g });
+}
 document.addEventListener("paste", e => {
   if (!board || mode !== "board" || !picker.hidden || !GH && !OFFLINE) return;
   if (e.target.closest && e.target.closest("input,textarea,[contenteditable],.dialog")) return;
+  let wb = null;
+  try { const raw = e.clipboardData && e.clipboardData.getData(CLIP_TYPE); if (raw) wb = JSON.parse(raw); } catch {}
+  if (!wb && clip && (e.clipboardData && e.clipboardData.getData("text/plain")) === clipText(clip)) wb = clip;
+  if (wb && (Array.isArray(wb.cards) || Array.isArray(wb.strokes))){ e.preventDefault(); pasteClip({ cards: wb.cards || [], strokes: wb.strokes || [] }); return; }
   const items = [...((e.clipboardData && e.clipboardData.items) || [])];
   const fileItem = items.find(i => i.kind === "file" && i.type.startsWith("image/"));
   if (fileItem){ e.preventDefault(); addImageFile(fileItem.getAsFile()); return; }
