@@ -2,6 +2,7 @@
 
 Rewiring Aotearoa's whiteboard of fold-out cards.
 
+- Opens on a chooser showing every board; each board has its own link (`…/whiteboard/#<board id>`).
 - Click a card to unfold its detail; the cards below move out of the way.
 - Drag from the dot on a card's side to another card to connect them.
 - Set a priority from 1 (highest) to 10 on an unfolded card, and switch between your own colours and colour-by-priority.
@@ -43,6 +44,8 @@ GitHub Pages can't run a server, so the app talks to the GitHub API directly wit
    - Expiration: as long as the organisation allows (note the date: the board stops saving when it expires)
 2. Run `node tools/set-password.mjs` in this repo and paste the key and choose the password when asked.
 3. Commit and push `config.enc.json`.
+
+People tick *Keep me signed in* (on by default) and only enter the password once per device. Changing the password alone doesn't sign anyone out; to sign everyone out, also create a new access key and delete the old one.
 
 ### Embedding on rewiring.nz (Webflow)
 
