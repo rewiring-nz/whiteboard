@@ -243,6 +243,11 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .k-image > .card-head img{display:block; width:100%; height:auto; border-radius:6px; box-shadow:0 2px 10px -2px var(--shadow); pointer-events:none}
 .img-missing{padding:24px 12px; text-align:center; color:var(--muted); background:var(--surface-2); border:1px dashed var(--line); border-radius:8px; font-size:12px}
 .k-emoji > .card-head{line-height:1; text-align:center}
+/* Text: a floating heading. Its size is c.w (font size in px); the text is kept in c.title. */
+.k-text > .card-head{padding:2px 4px}
+.k-text .tx{display:block; font-family:var(--f-display); font-weight:700; line-height:1.15; letter-spacing:-.01em; color:var(--ink); white-space:pre; min-width:1ch; outline:none; cursor:default}
+.k-text .tx[contenteditable]{cursor:text; -webkit-user-select:text; user-select:text}
+.k-text .tx:empty::before{content:"Heading"; color:var(--muted); opacity:.6}
 .k-emoji .em{display:block; font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif}
 .k-link.d-pill > .card-head{display:inline-flex; align-items:center; gap:7px; max-width:340px; padding:4px 12px 4px 4px; border-radius:999px; background:var(--surface);
   border:1px solid var(--line); box-shadow:0 1px 3px var(--shadow); color:var(--accent); font-size:13px; font-weight:500; white-space:nowrap}
@@ -297,6 +302,21 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 #vp.linking, #vp.linking .card-head{cursor:crosshair}
 #vp .body, #vp .edit{-webkit-user-select:text; user-select:text}
 #world{position:absolute; left:0; top:0; transform-origin:0 0}
+/* Timeline: column bands behind the cards, labels pinned to the top of the screen */
+#tl, #tlHead{position:absolute; left:0; top:0; right:0; pointer-events:none; overflow:hidden}
+#tl{bottom:0}
+#tlHead{height:30px; z-index:3}
+#tl[hidden], #tlHead[hidden]{display:none}
+#tl i{position:absolute; top:0; bottom:0; border-left:1px solid color-mix(in srgb, var(--ink) 16%, transparent)}
+#tl i.alt{background:color-mix(in srgb, var(--ink) 4%, transparent)}
+#tl i.now{background:color-mix(in srgb, var(--accent) 7%, transparent)}
+#tlHead b{position:absolute; top:0; height:30px; display:flex; align-items:center; justify-content:center; overflow:hidden; white-space:nowrap;
+  font:600 12px/1 var(--f-body); color:var(--muted); background:color-mix(in srgb, var(--board) 88%, transparent);
+  border-left:1px solid color-mix(in srgb, var(--ink) 16%, transparent); border-bottom:1px solid var(--line)}
+#tlHead b.now{color:var(--accent)}
+.menu .tl-start{display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:13px; color:var(--muted)}
+.menu .tl-start input{flex:1; min-width:0; font:inherit; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:4px 6px}
+.menu hr{border:0; border-top:1px solid var(--line); margin:6px 4px}
 #edges{position:absolute; left:0; top:0; width:1px; height:1px; overflow:visible; pointer-events:none}
 #edges .e{stroke:var(--edge); stroke-width:1.75; fill:none}
 #edges .e.sel{stroke:var(--accent); stroke-width:2.5}
@@ -480,7 +500,9 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <div class="sep board-only"></div>
     <div class="grp board-only">
       <button class="btn icon" id="emojiBtn" title="Emoji" aria-label="Emoji" aria-haspopup="true"><span style="font-size:16px;line-height:1">😊</span></button>
+      <button class="btn" id="textBtn" title="Add a heading or other text (T)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 3.5h10M8 3.5V13"/></svg>Text</button>
       <button class="btn" id="inkBtn" title="Draw on the board with a marker (M)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.5 2.5l3 3-7 7-3.5.5.5-3.5z"/><path d="M2 14.5c2-1 4 .5 6-.5"/></svg>Marker</button>
+      <button class="btn" id="tlBtn" title="Show time columns: weeks, months or years" aria-haspopup="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3v10M6 3v10M10 3v10M14 3v10"/></svg>Timeline</button>
       <div class="seg" id="cmode" title="How cards are coloured">
         <button data-cm="custom" class="on">Own colours</button>
         <button data-cm="priority">By priority</button>
@@ -514,6 +536,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 
 <main class="main" id="main">
 <div id="vp">
+  <div id="tl" hidden></div>
   <div id="world">
     <svg id="edges" aria-hidden="true">
       <defs>
@@ -528,6 +551,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     </svg>
     <button id="edgeDel" hidden>Remove link</button>
   </div>
+  <div id="tlHead" hidden></div>
   <div id="selBox" hidden></div>
   <div id="inkCatch" hidden></div>
   <div class="inkbar" id="inkBar" hidden role="toolbar" aria-label="Marker">
@@ -602,7 +626,7 @@ const clientId = uid();
 const COLORS = ["yellow","orange","red","pink","purple","lilac","blue","sky","teal","green","grey","plain"];
 const SAFE_ID = /^[A-Za-z0-9_-]{1,40}$/;
 const INKS = ["ink","red","blue","green","orange"];
-const KINDS = ["card","image","link","emoji"];               // card = fold-out card; the rest are things pasted or dropped on the board
+const KINDS = ["card","image","link","emoji","text"];               // card = fold-out card; the rest are things pasted or dropped on the board
 const ASSET_ID = /^[A-Za-z0-9_-]{1,40}\.(png|jpg|gif|webp)$/;
 const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -685,7 +709,7 @@ function sanitizeBoard(o){
     if (kind === "image"){ extra.asset = typeof c.asset === "string" && ASSET_ID.test(c.asset) ? c.asset : ""; }
     if (kind === "link"){ extra.url = safeUrl(c.url) || "https://example.com"; extra.disp = c.disp === "card" ? "card" : "pill"; extra.meta = cleanMeta(c.meta, extra.url); }
     if (kind === "emoji"){ extra.emoji = String(c.emoji ?? "").slice(0, 16) || "⭐"; }
-    return { ...keepUnknown(c, CARD_KEYS), id, kind, ...extra, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: kind === "card" ? clamp(Math.round(+c.w || 260), 180, 640) : clamp(Math.round(+c.w || 200), 24, 1600),
+    return { ...keepUnknown(c, CARD_KEYS), id, kind, ...extra, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: kind === "card" ? clamp(Math.round(+c.w || 260), 180, 640) : kind === "text" ? clamp(Math.round(+c.w || 36), 12, 240) : clamp(Math.round(+c.w || 200), 24, 1600),
       title: String(c.title ?? "").slice(0, 300), summary: String(c.summary ?? "").slice(0, 1000), body: String(c.body ?? "").slice(0, 40000),
       color: (COLORS.includes(c.color) || c.color === "auto" || /^#[0-9a-f]{6}$/i.test(c.color)) ? String(c.color).toLowerCase() : "plain", open: !!c.open, fields: cleanFields(c.fields), priority: clamp(Math.round(+c.priority || 0), 0, 10), owner: String(c.owner ?? "").replace(/\s+/g, " ").trim().slice(0, 80) };
   });
@@ -702,10 +726,17 @@ function sanitizeBoard(o){
     if (typeof k.g === "string" && SAFE_ID.test(k.g)) st.g = k.g;
     return st;
   });
-  return { ...keepUnknown(o, BOARD_KEYS), name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, columns, strokes, updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
+  return { ...keepUnknown(o, BOARD_KEYS), name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, columns, strokes, timeline: cleanTimeline(o.timeline), updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
 }
 const CARD_KEYS = new Set(["id","kind","asset","url","disp","meta","emoji","x","y","w","title","summary","body","color","open","fields","priority","owner"]);
-const BOARD_KEYS = new Set(["name","cards","edges","columns","strokes","updatedAt","by","v"]);
+const BOARD_KEYS = new Set(["name","cards","edges","columns","strokes","timeline","updatedAt","by","v"]);
+const TL_UNITS = ["weeks","months","years"];
+function cleanTimeline(t){
+  if (!t || typeof t !== "object" || !TL_UNITS.includes(t.unit)) return null;
+  const d = new Date();
+  const start = /^\d{4}-(0[1-9]|1[0-2])$/.test(t.start) ? t.start : d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  return { unit: t.unit, x: clamp(Math.round(+t.x || 0), -1e6, 1e6), start };
+}
 function keepUnknown(o, known){
   const out = {};
   for (const [k, v] of Object.entries(o || {})){
@@ -732,7 +763,7 @@ function cleanFields(f){
     for (const [k, v] of Object.entries(f).slice(0, 60)) if (SAFE_ID.test(k) && v != null && v !== "") out[k] = String(v).slice(0, 5000);
   return out;
 }
-function serialize(b){ return { name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [], updatedAt: b.updatedAt || Date.now(), by: editorName || "someone", v: 1 }; }
+function serialize(b){ return { ...keepUnknown(b, BOARD_KEYS), timeline: b.timeline || null, name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [], updatedAt: b.updatedAt || Date.now(), by: editorName || "someone", v: 1 }; }
 
 /* ---------- GitHub storage ---------- */
 const b64e = s => { const bytes = new TextEncoder().encode(s); let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(bin); };
@@ -903,6 +934,12 @@ function makeObjEl(c){
     e.stopPropagation();
     const cc = getCard(c.id); if (!cc) return;
     if (b.dataset.act === "del") deleteCard(cc.id);
+    else if (b.dataset.act === "edit") startTextEdit(el, cc.id, true);
+    else if (b.dataset.act === "bigger" || b.dataset.act === "smaller"){
+      pushUndo(); const steps = [14, 18, 24, 30, 36, 48, 64, 80, 104, 136, 180, 240];
+      cc.w = b.dataset.act === "bigger" ? (steps.find(v => v > cc.w) || 240) : ([...steps].reverse().find(v => v < cc.w) || 12);
+      updateCardEl(el, cc); markDirty();
+    }
     else if (b.dataset.act === "open") openLink(cc.url);
     else if (b.dataset.act === "disp"){
       pushUndo(); cc.disp = cc.disp === "card" ? "pill" : "card";
@@ -921,14 +958,16 @@ function openLink(u){ const url = safeUrl(u); if (url) window.open(url, "_blank"
 function labelOf(c){
   if (c.kind === "image") return "Image";
   if (c.kind === "emoji") return c.emoji;
+  if (c.kind === "text") return c.title || "Text";
   if (c.kind === "link") return c.meta.title || shortUrl(c.url);
   return c.title || "Untitled";
 }
 function updateObjEl(el, c){
   el.className = `card obj k-${c.kind}` + (c.kind === "link" ? " d-" + c.disp : "") +
     (selCards.has(c.id) ? " sel" : "") + (dragSet.has(c.id) ? " dragging" : "") + (linkFrom === c.id ? " link-src" : "");
-  el.style.width = (c.kind === "link" && c.disp === "pill") ? "" : c.w + "px";
-  const key = JSON.stringify([c.kind, c.asset, c.url, c.disp, c.meta, c.emoji, c.kind === "emoji" ? c.w : 0]);
+  el.style.width = (c.kind === "link" && c.disp === "pill") || c.kind === "text" ? "" : c.w + "px";
+  if (c.kind === "text" && el._editing){ el._head.querySelector(".tx").style.fontSize = c.w + "px"; return; }
+  const key = JSON.stringify([c.kind, c.asset, c.url, c.disp, c.meta, c.emoji, c.kind === "emoji" || c.kind === "text" ? c.w : 0, c.kind === "text" ? c.title : 0]);
   if (el._key === key) return;
   el._key = key;
   const h = el._head, del = `<button data-act="del" title="Remove" aria-label="Remove">✕</button>`;
@@ -937,6 +976,10 @@ function updateObjEl(el, c){
     el._tools.innerHTML = del;
     const img = h.querySelector("img");
     getAsset(c.asset).then(src => { if (src) img.src = src; else h.innerHTML = `<div class="img-missing">Image not available here</div>`; });
+  } else if (c.kind === "text"){
+    h.innerHTML = `<span class="tx"></span>`;
+    const tx = h.querySelector(".tx"); tx.textContent = c.title; tx.style.fontSize = c.w + "px";
+    el._tools.innerHTML = `<button data-act="smaller" title="Smaller" aria-label="Smaller text">A−</button><button data-act="bigger" title="Bigger" aria-label="Bigger text">A+</button><button data-act="edit" title="Edit text">Edit</button>${del}`;
   } else if (c.kind === "emoji"){
     h.innerHTML = `<span class="em"></span>`;
     const em = h.querySelector(".em"); em.textContent = c.emoji; em.style.fontSize = Math.round(c.w * 0.82) + "px";
@@ -1104,6 +1147,41 @@ function startInline(el, id, field, x, y, selectAll){
   };
   node.addEventListener("input", onInput); node.addEventListener("keydown", onKey); node.addEventListener("blur", onBlur); node.addEventListener("paste", onPaste);
 }
+/* Edit a text heading in place. Enter or Esc finishes; a heading left empty is removed. */
+function startTextEdit(el, id, selectAll, x, y){
+  const c = getCard(id); if (!el || !c || el._editing) return;
+  if (editingId) stopEditing();
+  const node = el._head.querySelector(".tx"); if (!node) return;
+  el._editing = true;
+  setEditable(node); node.setAttribute("spellcheck", "true");
+  node.focus({ preventScroll: true });
+  if (selectAll || x == null){ const r = document.createRange(); r.selectNodeContents(node); if (!selectAll) r.collapse(false); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+  else caretAt(node, x, y);
+  let pushed = false;
+  const onInput = () => {
+    if (!pushed){ pushUndo(); pushed = true; }
+    const cc = getCard(id); if (!cc) return;
+    cc.title = node.innerText.replace(/\n+/g, " ").slice(0, 300); markDirty();
+  };
+  const onKey = ev => { ev.stopPropagation(); if (ev.key === "Enter" || ev.key === "Escape"){ ev.preventDefault(); node.blur(); } };
+  const onPaste = ev => { ev.preventDefault(); ev.stopPropagation(); document.execCommand("insertText", false, (ev.clipboardData.getData("text/plain") || "").replace(/\s*\n\s*/g, " ")); };
+  const onBlur = () => {
+    node.removeEventListener("input", onInput); node.removeEventListener("keydown", onKey); node.removeEventListener("blur", onBlur); node.removeEventListener("paste", onPaste);
+    node.removeAttribute("contenteditable"); el._editing = false;
+    const cc = getCard(id); if (!cc) return;
+    cc.title = cc.title.trim();
+    if (!cc.title){ deleteCard(id); return; }
+    el._key = null; updateCardEl(el, cc);
+    if (dirty) flushSoon();
+  };
+  node.addEventListener("input", onInput); node.addEventListener("keydown", onKey); node.addEventListener("blur", onBlur); node.addEventListener("paste", onPaste);
+}
+function addText(){
+  if (!board || mode !== "board") return;
+  const pt = dropPoint();
+  const c = addObject({ kind: "text", title: "", w: 36, x: pt.x - 60, y: pt.y - 22 });
+  requestAnimationFrame(() => startTextEdit(els.get(c.id), c.id, true));
+}
 function startBodyEdit(el, id){
   const c = getCard(id); const body = el._slot.querySelector(".body"); if (!c || !body) return;
   el._bodyEditing = true;
@@ -1170,11 +1248,12 @@ function computeRender(items, dragging){
   const out = new Map(), placed = [];
   for (const it of items){
     let y = it.y;
-    if (!dragging.has(it.id) && it.kind !== "emoji"){
+    if (!dragging.has(it.id) && it.kind !== "emoji"){      // headings (text) get pushed down too, but never push
       for (const p of placed){
-        if (p.kind === "emoji" || dragging.has(p.id)) continue;
+        if (p.kind === "emoji" || p.kind === "text" || dragging.has(p.id)) continue;
         if (p.x < it.x + it.w - 2 && it.x < p.x + p.w - 2 && it.y - p.y > 24){
           const gap = it.y - (p.y + p.ch);
+          if (it.kind === "text" && gap < 0) continue;      // a heading placed over a card stays where it was put
           y = Math.max(y, p.ry + p.h + Math.max(gap, 10));
         }
       }
@@ -1340,7 +1419,8 @@ function wireCard(el, id){
     const up = () => {
       head.removeEventListener("pointermove", move); head.removeEventListener("pointerup", up); head.removeEventListener("pointercancel", up);
       if (st.moved){ dragSet = new Set(); renderCards(); markDirty(); }
-      else if (c.kind === "link"){ if (st.wasSel || e.pointerType !== "touch") openLink(c.url); }   // on touch: first tap selects, second opens
+      else if (c.kind === "link"){ if (st.wasSel || e.pointerType !== "touch") openLink(c.url); }
+      else if (c.kind === "text"){ if (st.wasSel) startTextEdit(el, id, false, e.clientX, e.clientY); }   // on touch: first tap selects, second opens
       else if (c.kind === "card" && editingId !== id){
         const t = e.target.closest(".title,.summary");
         if (t) startInline(el, id, t.classList.contains("title") ? "title" : "summary", e.clientX, e.clientY);
@@ -1351,11 +1431,11 @@ function wireCard(el, id){
   });
   head.addEventListener("keydown", e => {
     if (e.target !== head) return;
-    if (e.key === "Enter" || e.key === " "){ e.preventDefault(); const c = getCard(id); if (c && c.kind === "link") openLink(c.url); else toggleCard(id); }
+    if (e.key === "Enter" || e.key === " "){ e.preventDefault(); const c = getCard(id); if (c && c.kind === "link") openLink(c.url); else if (c && c.kind === "text") startTextEdit(el, id, true); else toggleCard(id); }
   });
   head.addEventListener("dblclick", e => e.stopPropagation());
   if (el._kind){
-    el.addEventListener("dblclick", e => e.stopPropagation());
+    el.addEventListener("dblclick", e => { e.stopPropagation(); if (el._kind === "text") startTextEdit(el, id, true); });
     el.querySelectorAll(".port").forEach(p => p.addEventListener("pointerdown", e => startConnect(e, id, p)));
     wireResize(el, id);
     return;
@@ -1395,7 +1475,7 @@ function wireResize(el, id){
     const c = getCard(id); if (!c) return;
     const st = { px: e.clientX, w: c.w, moved: false };
     rz.setPointerCapture(e.pointerId);
-    const [lo, hi] = c.kind === "card" ? [180, 640] : [24, 1600];
+    const [lo, hi] = c.kind === "card" ? [180, 640] : c.kind === "text" ? [12, 240] : [24, 1600];
     const move = ev => { if (!st.moved){ st.moved = true; pushUndo(); } c.w = clamp(Math.round(st.w + (ev.clientX - st.px) / view.s), lo, hi); if (el._kind) updateCardEl(el, c); else el.style.width = c.w + "px"; };
     const up = () => { rz.removeEventListener("pointermove", move); rz.removeEventListener("pointerup", up); if (st.moved) markDirty(); };
     rz.addEventListener("pointermove", move); rz.addEventListener("pointerup", up);
@@ -1458,7 +1538,7 @@ function startConnect(e, id, port){
 /* Find a spot that doesn't cover another card, moving right (or down) from where we'd like to put it. */
 function freeSpot(x, y, w, h, dir){
   // Measure the cards as they are on screen right now.
-  const rects = board.cards.filter(c => c.kind !== "emoji" && els.get(c.id)).map(c => { const el = els.get(c.id), r = renderPos.get(c.id); return { x: c.x, y: r ? r.y : c.y, w: el.offsetWidth, h: el.offsetHeight }; });
+  const rects = board.cards.filter(c => c.kind !== "emoji" && c.kind !== "text" && els.get(c.id)).map(c => { const el = els.get(c.id), r = renderPos.get(c.id); return { x: c.x, y: r ? r.y : c.y, w: el.offsetWidth, h: el.offsetHeight }; });
   const over = (ax, ay) => rects.filter(r => ax < r.x + r.w + 12 && r.x < ax + w + 12 && ay < r.y + r.h + 12 && r.y < ay + h + 12);
   for (let i = 0; i < 80; i++){
     const o = over(x, y); if (!o.length) break;
@@ -1525,9 +1605,83 @@ function applyView(){
   vp.style.backgroundSize = `${24 * view.s}px ${24 * view.s}px`;
   $("#zoomLabel").textContent = Math.round(view.s * 100) + "%";
   if (selInks.size) drawInkSel();
+  drawTimeline();
   clearTimeout(applyView.t);
   applyView.t = setTimeout(() => { if (boardId) ls.set("fb-view-" + boardId, view); }, 400);
 }
+/* ---------- timeline ----------
+   Columns of time (weeks, months or years) drawn behind the cards. They repeat forever as you pan or zoom out.
+   Saved with the board (board.timeline = { unit, x, start }) so everyone on the board sees the same columns. */
+const TL_W = 300;                                     // a little wider than a card (260)
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+function tlLabel(t, i, px){
+  if (t.unit === "weeks") return i < 0 ? "" : (px < 70 ? "W" : "Week ") + (i + 1);
+  const [y0, m0] = t.start.split("-").map(Number);
+  if (t.unit === "years") return String(y0 + i);
+  const m = (m0 - 1) + i, y = y0 + Math.floor(m / 12), mo = ((m % 12) + 12) % 12;
+  return px >= 130 ? MONTHS[mo] + " " + y : px >= 74 ? MONTHS[mo].slice(0, 3) + " " + y : MONTHS[mo].slice(0, 3);
+}
+function tlIsNow(t, i){
+  if (t.unit === "weeks") return false;
+  const [y0, m0] = t.start.split("-").map(Number), d = new Date();
+  return t.unit === "years" ? y0 + i === d.getFullYear() : (y0 * 12 + m0 - 1) + i === d.getFullYear() * 12 + d.getMonth();
+}
+function drawTimeline(){
+  const t = board && board.timeline, layer = $("#tl"), head = $("#tlHead");
+  $("#tlBtn").classList.toggle("on", !!t);
+  if (!t){ if (!layer.hidden){ layer.hidden = head.hidden = true; layer.textContent = head.textContent = ""; } return; }
+  layer.hidden = head.hidden = false;
+  const w = TL_W * view.s, vw = vp.clientWidth;
+  let i0 = Math.floor((-view.x / view.s - t.x) / TL_W), i1 = Math.ceil(((vw - view.x) / view.s - t.x) / TL_W);
+  if (t.unit === "weeks") i0 = Math.max(0, i0);
+  const n = Math.max(0, i1 - i0);
+  while (layer.children.length < n){ layer.appendChild(document.createElement("i")); head.appendChild(document.createElement("b")); }
+  while (layer.children.length > n){ layer.lastChild.remove(); head.lastChild.remove(); }
+  for (let k = 0; k < n; k++){
+    const i = i0 + k, left = view.x + (t.x + i * TL_W) * view.s, now = tlIsNow(t, i);
+    const a = layer.children[k], b = head.children[k];
+    a.style.left = b.style.left = left + "px"; a.style.width = b.style.width = w + "px";
+    a.className = now ? "now" : (i % 2 ? "alt" : "");
+    b.className = now ? "now" : "";
+    const txt = tlLabel(t, i, w); if (b.textContent !== txt) b.textContent = txt;
+  }
+}
+function tlOrigin(){
+  const xs = board.cards.map(c => c.x);
+  return xs.length ? Math.round(Math.min(...xs) - (TL_W - 260) / 2) : 0;
+}
+function setTimeline(unit){
+  if (!board) return;
+  const old = board.timeline;
+  board.timeline = unit ? cleanTimeline({ unit, x: old ? old.x : tlOrigin(), start: old && old.start }) : null;
+  drawTimeline(); markDirty();
+}
+function buildTimelineMenu(m){
+  const t = board && board.timeline, cur = t ? t.unit : "";
+  item(m, "Off", () => setTimeline(null), cur ? "" : "cur");
+  item(m, "Weeks", () => setTimeline("weeks"), cur === "weeks" ? "cur" : "", "Week 1, 2, 3…");
+  item(m, "Months", () => setTimeline("months"), cur === "months" ? "cur" : "");
+  item(m, "Years", () => setTimeline("years"), cur === "years" ? "cur" : "");
+  if (!t) return;
+  m.appendChild(document.createElement("hr"));
+  if (t.unit !== "weeks"){
+    const row = document.createElement("label"); row.className = "tl-start";
+    row.append(t.unit === "years" ? "First year" : "First month");
+    const inp = document.createElement("input");
+    if (t.unit === "years"){ inp.type = "number"; inp.min = 1900; inp.max = 2200; inp.value = t.start.slice(0, 4); }
+    else { inp.type = "month"; inp.value = t.start; }
+    inp.addEventListener("change", () => {
+      const v = t.unit === "years" ? (/^\d{4}$/.test(inp.value) ? inp.value + "-" + t.start.slice(5) : "") : inp.value;
+      if (!/^\d{4}-\d{2}$/.test(v) || !board.timeline) return;
+      board.timeline = cleanTimeline({ ...board.timeline, start: v }); drawTimeline(); markDirty();
+    });
+    row.appendChild(inp); m.appendChild(row);
+  }
+  item(m, "Line up with the cards", () => { if (board.timeline){ board.timeline = cleanTimeline({ ...board.timeline, x: tlOrigin() }); drawTimeline(); markDirty(); } });
+}
+$("#tlBtn").addEventListener("click", e => { if (menuEl && menuEl._tl){ closeMenu(); return; } openMenu(e.currentTarget, buildTimelineMenu); menuEl._tl = true; });
+window.addEventListener("resize", () => drawTimeline());
+
 function zoomAt(cx, cy, f){
   const r = vp.getBoundingClientRect(), px = cx - r.left, py = cy - r.top;
   const ns = clamp(view.s * f, 0.2, 2.5);
@@ -1708,19 +1862,20 @@ function mergeBoards(base, local, remote){
   const strokes = mergeList(base && base.strokes, local.strokes, remote.strokes, false);
   const columns = mergeList(base && base.columns, local.columns, remote.columns, true);
   const name = same(local.name, base && base.name) ? remote.name : local.name;
-  const merged = sanitizeBoard({ ...remote, ...local, name, cards: cards.v, edges: edges.v.filter(e => ids.has(e.from) && ids.has(e.to)), strokes: strokes.v, columns: columns.v,
+  const timeline = same(local.timeline || null, (base && base.timeline) || null) ? remote.timeline : local.timeline;
+  const merged = sanitizeBoard({ ...remote, ...local, name, timeline, cards: cards.v, edges: edges.v.filter(e => ids.has(e.from) && ids.has(e.to)), strokes: strokes.v, columns: columns.v,
     updatedAt: Math.max(+local.updatedAt || 0, +remote.updatedAt || 0) });
   return { board: merged, conflicts: cards.c + columns.c + (!same(local.name, remote.name) && !same(local.name, base && base.name) && !same(remote.name, base && base.name) ? 1 : 0) };
 }
 /* Put new content into the open board without disturbing anything being typed. */
 function applyContent(nb){
-  board.name = nb.name; board.cards = nb.cards; board.edges = nb.edges; board.columns = nb.columns; board.strokes = nb.strokes;
+  board.name = nb.name; board.cards = nb.cards; board.edges = nb.edges; board.columns = nb.columns; board.strokes = nb.strokes; board.timeline = nb.timeline || null;
   board.updatedAt = nb.updatedAt; board.by = nb.by;
   if (document.activeElement !== $("#boardName")) $("#boardName").value = board.name;
   if (editingId && !getCard(editingId)) editingId = null;
   for (const id of [...selCards]) if (!getCard(id)) selCards.delete(id);
   undoStack = []; redoStack = []; updUndo();     // undo steps from before can't safely be replayed over other people's changes
-  renderCards(); drawInk(); refreshSel();
+  renderCards(); drawInk(); refreshSel(); drawTimeline();
 }
 const whoChanged = d => d.by && d.by !== editorName && d.by !== "someone" && d.by !== "migrated" ? d.by + "'s" : "the latest";
 
@@ -1808,7 +1963,7 @@ async function localSave(){
     setTimeout(() => { if (dirty) flush(); }, 5000);
   }
 }
-function exportPayload(list){ return { app: "foldout-board", v: 1, exportedAt: new Date().toISOString(), boards: list.map(b => ({ name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [] })) }; }
+function exportPayload(list){ return { app: "foldout-board", v: 1, exportedAt: new Date().toISOString(), boards: list.map(b => ({ name: b.name, cards: b.cards, edges: b.edges, columns: b.columns || [], strokes: b.strokes || [], timeline: b.timeline || null })) }; }
 /* Exports and the linked file carry the boards' pictures too, so nothing is lost when moving boards around. */
 async function exportPayloadFull(list){
   const out = exportPayload(list), assets = {};
@@ -2017,7 +2172,7 @@ async function openBoard(id){
   $("#boardName").value = board.name; $("#boardName").disabled = false;
   $("#emptyState").hidden = true;
   setStatus("saved");
-  renderCards();
+  renderCards(); drawTimeline();
   const v = ls.get("fb-view-" + id, null);
   if (v && isFinite(v.x) && isFinite(v.y) && isFinite(v.s)){ view = { x: v.x, y: v.y, s: clamp(v.s, 0.2, 2.5) }; applyView(); }
   else requestAnimationFrame(() => fitView());
@@ -2093,7 +2248,7 @@ function ago(t){
   if (s < 60) return "just now"; if (s < 3600) return Math.round(s / 60) + "m ago"; if (s < 86400) return Math.round(s / 3600) + "h ago";
   return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }
-document.addEventListener("pointerdown", e => { if (menuEl && !menuEl.contains(e.target) && !e.target.closest("#boardsBtn,#moreBtn,#emojiBtn")) closeMenu(); });
+document.addEventListener("pointerdown", e => { if (menuEl && !menuEl.contains(e.target) && !e.target.closest("#boardsBtn,#moreBtn,#emojiBtn,#tlBtn")) closeMenu(); });
 
 function buildBoardsMenu(m){
   const ids = Object.keys(boardData).sort((a, b) => boardData[b].updatedAt - boardData[a].updatedAt);
@@ -2900,6 +3055,7 @@ function insertEmoji(ch){
   const pt = dropPoint();
   addObject({ kind: "emoji", emoji: ch, x: pt.x - 32, y: pt.y - 32, w: 64 });
 }
+$("#textBtn").addEventListener("click", addText);
 const emojiBtn = $("#emojiBtn");
 emojiBtn.addEventListener("mousedown", e => e.preventDefault());     // keep the cursor in the text you're editing
 emojiBtn.addEventListener("click", () => {
@@ -2931,7 +3087,7 @@ function finalHeight(c){
 }
 function organiseTargets(cur){
   const GAP = 24, COLGAP = 44;
-  const items = board.cards.filter(c => c.kind !== "emoji" && cur.has(c.id)).map(c => { const r = cur.get(c.id); return { c, x: r.x, y: r.y, w: r.w, h: finalHeight(c), ch: foldedHeight(c) }; });
+  const items = board.cards.filter(c => c.kind !== "emoji" && c.kind !== "text" && cur.has(c.id)).map(c => { const r = cur.get(c.id); return { c, x: r.x, y: r.y, w: r.w, h: finalHeight(c), ch: foldedHeight(c) }; });
   if (!items.length) return new Map();
   // group into columns by horizontal position
   let cols = [];
@@ -2978,6 +3134,13 @@ function organise(opts = {}){
   for (const c of board.cards) if (c.kind === "emoji" && cur.has(c.id)){
     const r = cur.get(c.id), h = host(r.x + r.w / 2, r.y + r.h / 2);
     if (h){ const a = cur.get(h), b = targets.get(h); targets.set(c.id, { x: r.x + b.x - a.x, y: r.y + b.y - a.y, w: r.w, h: r.h }); }
+  }
+  // a heading moves with the nearest card just below it
+  for (const c of board.cards) if (c.kind === "text" && cur.has(c.id)){
+    const r = cur.get(c.id); let best = null, bd = 400;
+    for (const id of targets.keys()){ const a = cur.get(id); const d = a.y - (r.y + r.h);
+      if (d >= -10 && d < bd && a.x < r.x + r.w && a.x + a.w > r.x){ bd = d; best = id; } }
+    if (best){ const a = cur.get(best), b = targets.get(best); targets.set(c.id, { x: r.x + b.x - a.x, y: r.y + b.y - a.y, w: r.w, h: r.h }); }
   }
   const strokeMove = new Map();
   for (const g of new Set(board.strokes.map(gkey))){
@@ -3112,6 +3275,7 @@ document.addEventListener("keydown", e => {
   if (typing) return;
   if (mod && e.key.toLowerCase() === "z"){ e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); return; }
   if (!mod && e.key.toLowerCase() === "m" && mode === "board" && board){ setInk(!inkMode); return; }
+  if (!mod && e.key.toLowerCase() === "t" && mode === "board" && board){ e.preventDefault(); addText(); return; }
   if (mod && e.key.toLowerCase() === "y"){ e.preventDefault(); doRedo(); return; }
   if (mod && e.key.toLowerCase() === "a" && board && mode === "board"){ e.preventDefault(); selectMany(board.cards.map(c => c.id), [...new Set(board.strokes.map(gkey))]); return; }
   if ((e.key === "Delete" || e.key === "Backspace") && board){

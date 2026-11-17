@@ -9,6 +9,8 @@ Rewiring Aotearoa's whiteboard of fold-out cards.
 - Drag from the dot on a card's side to another card to connect them, or let go on empty board to make a new linked card.
 - Paste (or drop) pictures, links and text onto the board. Links appear as short pills; hover to switch one to a preview card (previews come from microlink.io, which is sent the link only when you choose *Show as card*).
 - Emoji button: adds an emoji to the board, or into the text you're typing.
+- **Text** (or T): a floating heading for a section of cards. Click it once to select, again to edit; A− / A+ change the size. A heading moves down when a card above it unfolds, and moves with the card under it when you press Organise.
+- **Timeline**: column bands for Weeks (Week 1, 2, 3…), Months or Years behind the cards, a little wider than a card. They carry on as far as you pan or zoom out. Choose the first month or year, or *Line up with the cards*. It's saved with the board, so everyone sees it.
 - Cmd/Ctrl + C, X and V copy, cut and paste cards and drawings (between boards too). Unfolded cards also have a Duplicate button.
 - Set a priority from 1 (highest) to 10 and who is **Responsible** on an unfolded card (names already used are suggested). Both are columns in the Table too.
 - Web addresses in a card's detail become clickable links. Cmd/Ctrl + Enter finishes editing. Colours: 12 presets, a custom colour, or *Auto* (follows priority); the toolbar can also switch the whole board to colour-by-priority.
@@ -73,6 +75,6 @@ Webflow's page password only hides the Webflow page; the board's own password is
 
 ## Rules for changing the app
 
-- Never remove or rename a field or colour name that saved boards use (cards: kind, title, summary, body, color, open, priority, owner, fields, asset, url, disp, meta, emoji; boards: cards, edges, columns, strokes; strokes: g). New fields need a default so older boards still load.
+- Never remove or rename a field or colour name that saved boards use (cards: kind, title, summary, body, color, open, priority, owner, fields, asset, url, disp, meta, emoji; boards: cards, edges, columns, strokes, timeline; strokes: g). Text headings are cards with kind "text": the words are in title and the font size in w. New fields need a default so older boards still load.
 - Keep the internal storage names (`foldout-board` IndexedDB, `fb-…` keys, `app: "foldout-board"` in exports). They date from the tool's first name, and offline boards live under them.
 - Back up the data repo (it's git, so just note the current commit) before deploying a change that touches how boards are saved.
