@@ -1411,8 +1411,11 @@ function boundaryPoint(r, dx, dy){
 }
 /* ---------- connector routing ----------
    Connectors leave from the side of one card and enter the side of the other as a smooth curve.
-   If that curve would cross another card, the line is routed around cards (keeping a margin) with rounded bends. */
-const ROUTE_M = 16, ROUTE_R = 26, routeCache = new Map();
+   They behave like a rope: where the curve would come within ROUTE_M of another card, that part is pushed
+   sideways (away from the card's centre) and the push is spread smoothly along the rope, so it bends round
+   the card instead of switching to a different shape. The same geometry always gives the same line, so
+   moving a card changes it gradually. */
+const ROUTE_M = 18, ROUTE_N = 36, routeCache = new Map(), routeSide = new Map();
 function edgeEnds(a, b){
   const hgap = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)), vgap = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
   const ay = a.y + Math.min(a.h / 2, 34), by = b.y + Math.min(b.h / 2, 34);    // near the title, so links stay with the heading of tall unfolded cards
@@ -1423,125 +1426,173 @@ function edgeEnds(a, b){
   const d = b.y + b.h / 2 >= a.y + a.h / 2;
   return [{ x: a.x + a.w / 2, y: d ? a.y + a.h : a.y, nx: 0, ny: d ? 1 : -1 }, { x: b.x + b.w / 2, y: d ? b.y : b.y + b.h, nx: 0, ny: d ? -1 : 1 }];
 }
-const inObs = (obs, x, y) => obs.some(o => x > o.x0 && x < o.x1 && y > o.y0 && y < o.y1);
-function bezierRoute(p, q){
+function bezierBase(p, q){
   const k = clamp(Math.hypot(q.x - p.x, q.y - p.y) * 0.45, 30, 160);
   const c1 = [p.x + p.nx * k, p.y + p.ny * k], c2 = [q.x + q.nx * k, q.y + q.ny * k];
-  const at = t => { const u = 1 - t; return [u*u*u*p.x + 3*u*u*t*c1[0] + 3*u*t*t*c2[0] + t*t*t*q.x, u*u*u*p.y + 3*u*u*t*c1[1] + 3*u*t*t*c2[1] + t*t*t*q.y]; };
-  return { d: `M${p.x.toFixed(1)} ${p.y.toFixed(1)}C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${q.x.toFixed(1)} ${q.y.toFixed(1)}`, mid: at(0.5), at };
+  const pts = [];
+  for (let i = 0; i <= ROUTE_N; i++){
+    const t = i / ROUTE_N, u = 1 - t;
+    pts.push([u*u*u*p.x + 3*u*u*t*c1[0] + 3*u*t*t*c2[0] + t*t*t*q.x, u*u*u*p.y + 3*u*u*t*c1[1] + 3*u*t*t*c2[1] + t*t*t*q.y]);
+  }
+  return pts;
 }
-/* Shortest route with few bends on a sparse grid made from the edges of the cards in the way. */
-function gridRoute(S, E, sDir, eDir, obs, box){
-  const xs = [...new Set([S.x, E.x, (S.x + E.x) / 2, box.x0, box.x1, ...obs.flatMap(o => [o.x0, o.x1])].map(v => Math.round(v)))].sort((m, n) => m - n);
-  const ys = [...new Set([S.y, E.y, (S.y + E.y) / 2, box.y0, box.y1, ...obs.flatMap(o => [o.y0, o.y1])].map(v => Math.round(v)))].sort((m, n) => m - n);
-  const W = xs.length, H = ys.length, N = W * H;
-  if (N > 40000) return null;
-  const free = new Uint8Array(N);
-  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) free[j * W + i] = inObs(obs, xs[i], ys[j]) ? 0 : 1;
-  const si = xs.indexOf(Math.round(S.x)) + ys.indexOf(Math.round(S.y)) * W, ei = xs.indexOf(Math.round(E.x)) + ys.indexOf(Math.round(E.y)) * W;
-  if (!free[si] || !free[ei]) return null;
-  const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1], BEND = 60;
-  const dirOf = (nx, ny) => nx > 0 ? 0 : ny > 0 ? 1 : nx < 0 ? 2 : 3;
-  const sd = dirOf(sDir.nx, sDir.ny), ed = dirOf(-eDir.nx, -eDir.ny);
-  const cost = new Float64Array(N * 4).fill(Infinity), prev = new Int32Array(N * 4).fill(-1);
-  const heap = [];   // [f, state]
-  const push = (f, st) => { heap.push([f, st]); let i = heap.length - 1; while (i){ const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
-  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length){ heap[0] = last; let i = 0; for (;;){ const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
-  const hx = xs[ei % W], hy = ys[Math.floor(ei / W)];
-  const h = n => Math.abs(xs[n % W] - hx) + Math.abs(ys[Math.floor(n / W)] - hy);
-  cost[si * 4 + sd] = 0; push(h(si), si * 4 + sd);
-  let goal = -1, guard = 0;
-  while (heap.length && guard++ < 200000){
-    const [, st] = pop(); const n = st >> 2, d = st & 3, c = cost[st];
-    if (n === ei){ goal = st; if (d === ed) break; continue; }
-    const i = n % W, j = (n - i) / W;
-    for (let nd = 0; nd < 4; nd++){
-      if (nd === (d + 2) % 4) continue;
-      const ni = i + DX[nd], nj = j + DY[nd];
-      if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
-      const m = nj * W + ni; if (!free[m]) continue;
-      if (inObs(obs, (xs[i] + xs[ni]) / 2, (ys[j] + ys[nj]) / 2)) continue;
-      let nc = c + Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j]) + (nd === d ? 0 : BEND);
-      if (m === ei && nd !== ed) nc += BEND;
-      const ns = m * 4 + nd;
-      if (nc < cost[ns]){ cost[ns] = nc; prev[ns] = st; push(nc + h(m), ns); }
+/* How far to move from (x, y) in direction (dx, dy) to leave box o. */
+function exitDist(o, x, y, dx, dy){
+  let t = Infinity;
+  if (dx > 1e-6) t = Math.min(t, (o.x1 - x) / dx); else if (dx < -1e-6) t = Math.min(t, (o.x0 - x) / dx);
+  if (dy > 1e-6) t = Math.min(t, (o.y1 - y) / dy); else if (dy < -1e-6) t = Math.min(t, (o.y0 - y) / dy);
+  return t === Infinity ? 0 : t;
+}
+function ropeRoute(e, p, q, obs){
+  const base = bezierBase(p, q), N = ROUTE_N;
+  if (!obs.length) return base;
+  const nrm = (P, i) => { const a = P[Math.max(0, i - 1)], b = P[Math.min(N, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l, dx / l]; };
+  // which side of the rope each card pushes it to. Cards that touch or overlap count as one block, so the rope
+  // goes round them together. Like a real rope, it stays on the side it started on while the block overlaps it
+  // (remembered per connector and card), and only flips when going round the other way is much shorter.
+  const par = obs.map((_, i) => i), root = i => par[i] === i ? i : (par[i] = root(par[i]));
+  for (let i = 0; i < obs.length; i++) for (let j = i + 1; j < obs.length; j++){
+    const a = obs[i], b = obs[j];
+    if (a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1) par[root(i)] = root(j);
+  }
+  const groups = new Map();
+  obs.forEach((o, i) => { const r = root(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(o); });
+  for (const g of groups.values()){
+    const need = { 1: 0, "-1": 0 }; let hit = false;
+    for (let i = 2; i <= N - 2; i++){
+      const [x, y] = base[i], n = nrm(base, i);
+      for (const o of g){
+        if (x <= o.x0 || x >= o.x1 || y <= o.y0 || y >= o.y1) continue;
+        hit = true;
+        // going one way round, the rope has to clear every card in the block, so follow through overlapping ones
+        for (const sd of [1, -1]){
+          let px = x, py = y, tot = 0;
+          for (let k = 0; k < g.length + 1; k++){
+            const inn = g.find(q => px > q.x0 && px < q.x1 && py > q.y0 && py < q.y1); if (!inn) break;
+            const t = exitDist(inn, px, py, n[0] * sd, n[1] * sd) + 0.5; px += n[0] * sd * t; py += n[1] * sd * t; tot += t;
+          }
+          need[sd] = Math.max(need[sd], tot);
+        }
+      }
+    }
+    const keys = g.map(o => e.id + "|" + o.id);
+    let side;
+    if (!hit){                                       // not touching the line: forget, and lean away from the block's centre
+      keys.forEach(k => routeSide.delete(k));
+      const cx = g.reduce((v, o) => v + o.x0 + o.x1, 0) / (2 * g.length), cy = g.reduce((v, o) => v + o.y0 + o.y1, 0) / (2 * g.length);
+      let bi = 0, bd = Infinity;
+      for (let i = 0; i <= N; i++){ const d = (base[i][0] - cx) ** 2 + (base[i][1] - cy) ** 2; if (d < bd){ bd = d; bi = i; } }
+      const n = nrm(base, bi);
+      side = (cx - base[bi][0]) * n[0] + (cy - base[bi][1]) * n[1] > 0 ? -1 : 1;
+    } else {
+      const prev = keys.map(k => routeSide.get(k)).find(Boolean), best = need[1] <= need[-1] ? 1 : -1;
+      side = prev && need[prev] <= need[-prev] * 2 + 160 ? prev : best;
+      keys.forEach(k => routeSide.set(k, side));
+    }
+    g.forEach(o => o.side = side);
+  }
+  if (routeSide.size > 4000) routeSide.clear();
+  const D = base.map(() => [0, 0]), P = base.map(b => b.slice()), BN = base.map((_, i) => nrm(base, i));   // push directions come from the original curve, so the rope can't curl up
+  for (let it = 0; it < 90; it++){                     // the first two and last two points stay put, so the ends leave and enter cards straight
+    // push points that are too close to a card out sideways
+    for (let i = 2; i <= N - 2; i++){
+      const [x, y] = P[i];
+      for (const o of obs){
+        if (x <= o.x0 || x >= o.x1 || y <= o.y0 || y >= o.y1) continue;
+        const n = BN[i], dx = n[0] * o.side, dy = n[1] * o.side;
+        const t = exitDist(o, P[i][0], P[i][1], dx, dy);
+        D[i][0] += dx * t; D[i][1] += dy * t; P[i][0] += dx * t; P[i][1] += dy * t;
+      }
+    }
+    if (it === 89) break;
+    // spread the pushes along the rope (smooths the displacement, not the curve, so the free parts keep their shape)
+    for (let i = 2; i <= N - 2; i++){
+      D[i][0] += 0.95 * ((D[i-1][0] + D[i+1][0]) / 2 - D[i][0]);
+      D[i][1] += 0.95 * ((D[i-1][1] + D[i+1][1]) / 2 - D[i][1]);
+      P[i][0] = base[i][0] + D[i][0]; P[i][1] = base[i][1] + D[i][1];
     }
   }
-  if (goal < 0){ for (let d = 0; d < 4; d++) if (cost[ei * 4 + d] < Infinity && (goal < 0 || cost[ei * 4 + d] < cost[goal])) goal = ei * 4 + d; }
-  if (goal < 0) return null;
-  const pts = [];
-  for (let st = goal; st >= 0; st = prev[st]){ const n = st >> 2; pts.push([xs[n % W], ys[Math.floor(n / W)]]); }
-  return pts.reverse();
+  // round off the bends: smooth the rope itself, letting it cut into the margin but never closer than 6px to a card
+  const inner = obs.map(o => { const k = Math.max(0, ROUTE_M - 6) * (o.x1 - o.x0 > 2 * ROUTE_M ? 1 : 0); return { x0: o.x0 + k, y0: o.y0 + k, x1: o.x1 - k, y1: o.y1 - k, side: o.side }; });
+  for (let it = 0; it < 14; it++){
+    for (let i = 2; i <= N - 2; i++){
+      const x = (P[i-1][0] + P[i+1][0]) / 2, y = (P[i-1][1] + P[i+1][1]) / 2;
+      P[i][0] += 0.6 * (x - P[i][0]); P[i][1] += 0.6 * (y - P[i][1]);
+      for (const o of inner){
+        if (P[i][0] <= o.x0 || P[i][0] >= o.x1 || P[i][1] <= o.y0 || P[i][1] >= o.y1) continue;
+        const dx = BN[i][0] * o.side, dy = BN[i][1] * o.side, t = exitDist(o, P[i][0], P[i][1], dx, dy);
+        P[i][0] += dx * t; P[i][1] += dy * t;
+      }
+    }
+  }
+  return P;
 }
-function roundedPath(pts){
-  const q = [pts[0]];
-  for (let i = 1; i < pts.length; i++){               // drop repeats and points in the middle of straight runs
-    const a = q[q.length - 1], b = pts[i];
-    if (Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5) continue;
-    if (q.length >= 2){ const z = q[q.length - 2]; if ((Math.abs(z[0] - a[0]) < 0.5 && Math.abs(a[0] - b[0]) < 0.5) || (Math.abs(z[1] - a[1]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5)){ q[q.length - 1] = b; continue; } }
-    q.push(b);
+/* Smooth curve through the rope's points (Catmull-Rom as cubic Béziers). */
+function splinePath(P){
+  const f = v => v.toFixed(1);
+  let d = `M${f(P[0][0])} ${f(P[0][1])}`;
+  for (let i = 0; i < P.length - 1; i++){
+    const a = P[Math.max(0, i - 1)], b = P[i], c = P[i + 1], z = P[Math.min(P.length - 1, i + 2)];
+    d += `C${f(b[0] + (c[0] - a[0]) / 6)} ${f(b[1] + (c[1] - a[1]) / 6)} ${f(c[0] - (z[0] - b[0]) / 6)} ${f(c[1] - (z[1] - b[1]) / 6)} ${f(c[0])} ${f(c[1])}`;
   }
-  let d = `M${q[0][0]} ${q[0][1]}`;
-  for (let i = 1; i < q.length - 1; i++){
-    const [px, py] = q[i - 1], [cx, cy] = q[i], [nx, ny] = q[i + 1];
-    const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy), r = Math.min(ROUTE_R, l1 / 2, l2 / 2);
-    d += `L${(cx - (cx - px) / l1 * r).toFixed(1)} ${(cy - (cy - py) / l1 * r).toFixed(1)}Q${cx} ${cy} ${(cx + (nx - cx) / l2 * r).toFixed(1)} ${(cy + (ny - cy) / l2 * r).toFixed(1)}`;
-  }
-  d += `L${q[q.length - 1][0]} ${q[q.length - 1][1]}`;
-  // midpoint along the route, for the Remove button
-  let total = 0; for (let i = 1; i < q.length; i++) total += Math.hypot(q[i][0] - q[i-1][0], q[i][1] - q[i-1][1]);
-  let half = total / 2, mid = q[0];
-  for (let i = 1; i < q.length; i++){ const l = Math.hypot(q[i][0] - q[i-1][0], q[i][1] - q[i-1][1]); if (half <= l){ const t = l ? half / l : 0; mid = [q[i-1][0] + (q[i][0] - q[i-1][0]) * t, q[i-1][1] + (q[i][1] - q[i-1][1]) * t]; break; } half -= l; }
-  return { d, mid };
+  return d;
 }
 function routeEdge(e, a, b){
   const [p, q] = edgeEnds(a, b);
-  const pad = 420, box = { x0: Math.min(p.x, q.x) - pad, x1: Math.max(p.x, q.x) + pad, y0: Math.min(p.y, q.y) - pad, y1: Math.max(p.y, q.y) + pad };
-  const obsAt = m => {
-    const out = [];
-    for (const [id, r] of renderPos){
-      if (id === e.from || id === e.to) continue;
-      const o = { x0: r.x - m, y0: r.y - m, x1: r.x + r.w + m, y1: r.y + r.h + m };
-      if (o.x1 < box.x0 || o.x0 > box.x1 || o.y1 < box.y0 || o.y0 > box.y1) continue;
-      out.push(o);
-    }
-    return out;
-  };
-  const obs = obsAt(ROUTE_M);
-  const key = [p.x, p.y, p.nx, p.ny, q.x, q.y, q.nx, q.ny, ...obs.flatMap(o => [o.x0, o.y0, o.x1, o.y1])].map(Math.round).join(",");
-  const hit = routeCache.get(key); if (hit) return hit;
-  let res = bezierRoute(p, q);
-  let clear = true;
-  for (let t = 0.04; t < 0.97 && clear; t += 0.04){ const [x, y] = res.at(t); if (inObs(obs, x, y)) clear = false; }
-  if (!clear){
-    // try with the full margin first, then squeeze through narrower gaps between cards that sit close together
-    for (const m of [ROUTE_M, 7, 3]){
-      const st = m + Math.min(8, m);
-      const S = { x: p.x + p.nx * st, y: p.y + p.ny * st }, E = { x: q.x + q.nx * st, y: q.y + q.ny * st };
-      const pts = gridRoute(S, E, p, q, m === ROUTE_M ? obs : obsAt(m), box);
-      if (pts){ res = roundedPath([[p.x, p.y], ...pts, [q.x, q.y]]); break; }
-    }
+  const pad = 360, box = { x0: Math.min(p.x, q.x) - pad, x1: Math.max(p.x, q.x) + pad, y0: Math.min(p.y, q.y) - pad, y1: Math.max(p.y, q.y) + pad };
+  const obs = [];
+  for (const [id, r] of renderPos){
+    if (id === e.from || id === e.to) continue;
+    let m = ROUTE_M;
+    const o = { id, x0: r.x - m, y0: r.y - m, x1: r.x + r.w + m, y1: r.y + r.h + m };
+    if (o.x1 < box.x0 || o.x0 > box.x1 || o.y1 < box.y0 || o.y0 > box.y1) continue;
+    // a card right next to an end: shrink its margin so the end itself is never inside it
+    for (const t of [p, q]) if (t.x > o.x0 && t.x < o.x1 && t.y > o.y0 && t.y < o.y1){ m = 2; o.x0 = r.x - m; o.y0 = r.y - m; o.x1 = r.x + r.w + m; o.y1 = r.y + r.h + m; }
+    obs.push(o);
   }
-  const out = { d: res.d, mid: res.mid };
+  const key = e.id + ":" + [p.x, p.y, p.nx, p.ny, q.x, q.y, q.nx, q.ny, ...obs.flatMap(o => [o.x0, o.y0, o.x1, o.y1])].map(Math.round).join(",");
+  const hit = routeCache.get(key); if (hit) return hit;
+  const P = ropeRoute(e, p, q, obs);
+  const out = { P };
   if (routeCache.size > 800) routeCache.clear();
   routeCache.set(key, out);
   return out;
 }
+/* The rope eases to a new shape over a few frames instead of snapping (its ends always stay on the cards). */
+const ropeShown = new Map(); let ropeRaf = 0;
+function easeRope(id, P){
+  const N = P.length - 1, cur = ropeShown.get(id);
+  const rel = Q => Q.map((pt, i) => [pt[0] - (Q[0][0] + (Q[N][0] - Q[0][0]) * i / N), pt[1] - (Q[0][1] + (Q[N][1] - Q[0][1]) * i / N)]);
+  if (!cur || cur.length !== P.length || !drawEdges.anim){ ropeShown.set(id, rel(P)); return { P, moving: false }; }
+  const tgt = rel(P); let far = 0;
+  for (let i = 0; i <= N; i++){
+    let dx = (tgt[i][0] - cur[i][0]) * 0.25, dy = (tgt[i][1] - cur[i][1]) * 0.25;
+    const l = Math.hypot(dx, dy); if (l > 22){ dx *= 22 / l; dy *= 22 / l; }   // never more than 22px a frame: big changes glide
+    cur[i][0] += dx; cur[i][1] += dy;
+    far = Math.max(far, Math.abs(tgt[i][0] - cur[i][0]), Math.abs(tgt[i][1] - cur[i][1]));
+  }
+  if (far < 0.6) for (let i = 0; i <= N; i++){ cur[i][0] = tgt[i][0]; cur[i][1] = tgt[i][1]; }
+  return { P: cur.map((o, i) => [P[0][0] + (P[N][0] - P[0][0]) * i / N + o[0], P[0][1] + (P[N][1] - P[0][1]) * i / N + o[1]]), moving: far >= 0.6 };
+}
 function drawEdges(){
   if (!board){ edgeG.innerHTML = ""; edgeDel.hidden = true; return; }
-  let html = "", delPos = null;
+  let html = "", delPos = null, moving = false;
   for (const e of board.edges){
     const a = renderPos.get(e.from), b = renderPos.get(e.to);
     if (!a || !b) continue;
     const sel = edgeSelected(e);
-    const { d, mid } = routeEdge(e, a, b);
+    const shown = easeRope(e.id, routeEdge(e, a, b).P); moving = moving || shown.moving;
+    const d = splinePath(shown.P), mid = shown.P[ROUTE_N >> 1];
     html += `<path class="e${sel ? " sel" : ""}" d="${d}" marker-end="url(#${sel ? "arrSel" : "arr"})"/><path class="hit" data-id="${e.id}" d="${d}"/>`;
     if (sel && selected && selected.type === "edge") delPos = mid;
   }
   edgeG.innerHTML = html;
   if (delPos){ edgeDel.hidden = false; edgeDel.style.left = delPos[0] + "px"; edgeDel.style.top = delPos[1] + "px"; }
   else edgeDel.hidden = true;
+  if (moving && !ropeRaf) ropeRaf = requestAnimationFrame(() => { ropeRaf = 0; drawEdges(); });
 }
+drawEdges.anim = false;                               // off while a board first draws, so lines don't swoop in
+setTimeout(() => { drawEdges.anim = !matchMedia("(prefers-reduced-motion: reduce)").matches; }, 1500);
 edgeG.addEventListener("pointerdown", e => {
   const p = e.target.closest(".hit"); if (!p) return;
   e.stopPropagation(); select({ type: "edge", id: p.dataset.id });
