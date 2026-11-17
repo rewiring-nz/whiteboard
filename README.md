@@ -5,7 +5,7 @@ Rewiring Aotearoa's whiteboard of fold-out cards.
 - Select several things by dragging a box on empty board or Shift-clicking; drag any of them to move them together. Connectors between selected cards are selected too. Undo/Redo: toolbar arrows or Cmd/Ctrl + Z / Shift + Z.
 - **Organise** tidies the board into neat columns and zooms to fit (your own layout is kept until you press it; undo puts it back). Expand all / Collapse all tidy and fit the same way.
 - Opens on a chooser showing every board; each board has its own link (`…/whiteboard/#<board id>`).
-- Click a card's title, summary or detail to edit it in place. The arrow folds and unfolds a card; the cards below move out of the way.
+- Click anywhere in a card's title, summary or detail and type: the cursor goes where you click and the text stays as it looks (bullets, fold-out sections, links). Enter on a bullet starts a new one; typing `- ` or `## ` at the start of a line still makes a bullet or section once you finish. The arrow folds and unfolds a card; the cards below move out of the way.
 - Drag from the dot on a card's side to another card to connect them, or let go on empty board to make a new linked card. Connectors are curved and find their way around other cards, keeping a small gap.
 - New cards start folded, showing just the title. Drag a card's bottom-right corner (or right edge) to make it wider or narrower; it keeps that width.
 - Paste (or drop) pictures, links and text onto the board. Links appear as short pills; hover to switch one to a preview card (previews come from microlink.io, which is sent the link only when you choose *Show as card*).

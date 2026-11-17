@@ -347,7 +347,15 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .summary:empty::before{content:"Add a summary"; color:var(--muted); opacity:.6}
 .title:empty::before{content:"Untitled"; color:var(--muted); opacity:.6}
 .title, .summary, .body{cursor:text}
-.title[contenteditable], .summary[contenteditable]{outline:none; border-radius:4px; box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent); background:color-mix(in srgb, var(--surface) 55%, transparent); cursor:text; -webkit-user-select:text; user-select:text}
+.title[contenteditable], .summary[contenteditable]{outline:none; cursor:text; -webkit-user-select:text; user-select:text; caret-color:var(--accent)}
+/* The detail is edited exactly as it's shown: no box, same text, the cursor goes where you click */
+.md-edit{outline:none; cursor:text; caret-color:var(--accent); min-height:1.5em; -webkit-user-select:text; user-select:text}
+.md-edit > :first-child{margin-top:0}
+.md-edit a{cursor:pointer}
+.md-edit .sec-h{padding:7px 0 7px 11px; font-weight:600; position:relative}
+.md-edit .sec-h::before{content:""; position:absolute; left:0; top:50%; margin-top:-2px; border-top:5px solid var(--muted); border-left:4px solid transparent; border-right:4px solid transparent}
+.md-edit .sec-b{padding:0 0 6px 11px}
+.card.body-editing .wrap{box-shadow:inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent)}
 .chev{cursor:pointer}
 .body-edit{display:block; width:100%; min-height:90px; resize:none; overflow:hidden; border:0; outline:none; border-radius:6px; padding:6px 8px; margin:0 0 4px -8px;
   font:13px/1.55 ui-monospace, "SF Mono", Menlo, monospace; color:var(--ink); background:color-mix(in srgb, var(--surface) 70%, transparent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent)}
@@ -873,33 +881,35 @@ async function prepareImage(file){
 
 /* ---------- markdown-lite ---------- */
 function esc(s){ return s.replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
-function inline(s){
+function inline(s, edit){
   let h = esc(s);
   // Links are set aside first so the other formatting can't break them: [text](https://…) and bare web addresses.
   const links = [];
-  const keep = html => { links.push(html); return "\u0001" + (links.length - 1) + "\u0002"; };
-  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, u) => keep(`<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`));
+  // While editing, links are single blocks that keep their original text (so a shortened address can't be cut short by mistake).
+  const keep = (html, src) => { links.push(edit ? html.replace("<a ", `<a contenteditable="false" data-md="${src}" `) : html); return "\u0001" + (links.length - 1) + "\u0002"; };
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, u) => keep(`<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`, m));
   h = h.replace(/\bhttps?:\/\/[^\s<\u0001]+/g, u => {
     const trail = (u.match(/[.,;:!?)\]]+$/) || [""])[0]; u = u.slice(0, u.length - trail.length);
-    return keep(`<a href="${u}" target="_blank" rel="noopener noreferrer" title="${u}">${esc(shortUrl(u.replace(/&amp;/g, "&")))}</a>`) + trail;
+    return keep(`<a href="${u}" target="_blank" rel="noopener noreferrer" title="${u}">${esc(shortUrl(u.replace(/&amp;/g, "&")))}</a>`, u) + trail;
   });
   h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
   h = h.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   h = h.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
   return h.replace(/\u0001(\d+)\u0002/g, (m, i) => links[+i]);
 }
-function mdBlocks(lines){
+function mdBlocks(lines, edit){
+  const inl = s => inline(s, edit);
   let out = "", list = null, para = [];
-  const fp = () => { if (para.length){ out += "<p>" + para.map(inline).join("<br>") + "</p>"; para = []; } };
-  const fl = () => { if (list){ out += `<${list.t}>` + list.items.map(i => "<li>" + inline(i) + "</li>").join("") + `</${list.t}>`; list = null; } };
+  const fp = () => { if (para.length){ out += "<p>" + para.map(inl).join("<br>") + "</p>"; para = []; } };
+  const fl = () => { if (list){ out += `<${list.t}>` + list.items.map(i => "<li>" + inl(i) + "</li>").join("") + `</${list.t}>`; list = null; } };
   for (const raw of lines){
     const l = raw.replace(/\s+$/, ""); let m;
     if (!l.trim()){ fp(); fl(); continue; }
     if ((m = l.match(/^\s*[-*•]\s+(.*)/))){ fp(); if (!list || list.t !== "ul"){ fl(); list = {t:"ul", items:[]}; } list.items.push(m[1]); continue; }
     if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))){ fp(); if (!list || list.t !== "ol"){ fl(); list = {t:"ol", items:[]}; } list.items.push(m[1]); continue; }
     fl();
-    if ((m = l.match(/^#\s+(.*)/))){ fp(); out += "<h4>" + inline(m[1]) + "</h4>"; continue; }
-    if ((m = l.match(/^>\s?(.*)/))){ fp(); out += "<blockquote>" + inline(m[1]) + "</blockquote>"; continue; }
+    if ((m = l.match(/^#\s+(.*)/))){ fp(); out += "<h4>" + inl(m[1]) + "</h4>"; continue; }
+    if ((m = l.match(/^>\s?(.*)/))){ fp(); out += "<blockquote>" + inl(m[1]) + "</blockquote>"; continue; }
     para.push(l);
   }
   fp(); fl(); return out;
@@ -913,6 +923,54 @@ function md(text){
   };
   for (const l of text.split("\n")){ const m = l.match(/^##\s+(.*)/); if (m){ emit(); sec = m[1]; } else cur.push(l); }
   emit(); return out;
+}
+/* The same, for editing in place: fold-out sections are shown open, links can't be split. */
+function mdEdit(text){
+  if (!text.trim()) return "<p><br></p>";
+  let out = "", cur = [], sec = null;
+  const emit = () => { out += sec === null ? mdBlocks(cur, true) : `<div class="sec-h">${inline(sec, true)}</div><div class="sec-b">${mdBlocks(cur, true) || "<p><br></p>"}</div>`; cur = []; };
+  for (const l of text.split("\n")){ const m = l.match(/^##\s+(.*)/); if (m){ emit(); sec = m[1]; } else cur.push(l); }
+  emit(); return out;
+}
+/* Turn edited text back into the stored markdown-lite. */
+function domToMd(root){
+  const lines = [];
+  const inl = n => {
+    if (n.nodeType === 3) return n.nodeValue.replace(/\u00a0/g, " ");
+    if (n.nodeType !== 1) return "";
+    const t = n.tagName, kids = () => [...n.childNodes].map(inl).join("");
+    if (t === "BR") return "\n";
+    if (t === "A") return n.dataset.md || (n.getAttribute("href") && n.textContent !== n.getAttribute("href") ? `[${n.textContent}](${n.getAttribute("href")})` : n.textContent);
+    if (t === "STRONG" || t === "B"){ const k = kids(); return k.trim() ? `**${k}**` : k; }
+    if (t === "EM" || t === "I"){ const k = kids(); return k.trim() ? `*${k}*` : k; }
+    if (t === "CODE"){ const k = kids(); return k ? "`" + k + "`" : k; }
+    if (t === "DIV" || t === "P" || t === "LI") return "\n" + kids() + "\n";
+    return kids();
+  };
+  const clean = s => s.replace(/^\n+|\n+$/g, "").replace(/\n{2,}/g, "\n");
+  const block = (container, prefix) => {
+    let run = "";
+    const flushRun = () => { const t = clean(run); if (t.trim()) lines.push(...t.split("\n")); run = ""; };
+    for (const n of container.childNodes){
+      const t = n.nodeType === 1 ? n.tagName : "";
+      if (t === "UL" || t === "OL"){
+        flushRun();
+        [...n.children].forEach((li, i) => { const txt = clean(inl(li)).replace(/\n/g, " "); if (txt.trim()) lines.push((t === "OL" ? (i + 1) + ". " : "- ") + txt); });
+        lines.push("");
+      } else if (t === "H4"){ flushRun(); lines.push("# " + clean(inl(n)).replace(/\n/g, " "), ""); }
+      else if (t === "BLOCKQUOTE"){ flushRun(); lines.push("> " + clean(inl(n)).replace(/\n/g, " "), ""); }
+      else if (n.nodeType === 1 && n.classList.contains("sec-h")){ flushRun(); lines.push("## " + clean(inl(n)).replace(/\n/g, " ")); }
+      else if (n.nodeType === 1 && n.classList.contains("sec-b")){ flushRun(); block(n); }
+      else if (t === "P" || t === "DIV"){
+        flushRun();
+        if (n.querySelector("ul,ol,h4,blockquote,p,div")) block(n);
+        else { const tx = clean(inl(n)); if (tx.trim()) lines.push(...tx.split("\n"), ""); }
+      } else run += inl(n);
+    }
+    flushRun();
+  };
+  block(root);
+  return lines.join("\n").replace(/[ \t]+$/gm, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 /* ---------- icons ---------- */
@@ -1188,21 +1246,29 @@ function addText(){
   const c = addObject({ kind: "text", title: "", w: 36, x: pt.x - 60, y: pt.y - 22 });
   requestAnimationFrame(() => startTextEdit(els.get(c.id), c.id, true));
 }
-function startBodyEdit(el, id){
+function startBodyEdit(el, id, x, y){
   const c = getCard(id); const body = el._slot.querySelector(".body"); if (!c || !body) return;
-  el._bodyEditing = true;
-  const prow = body.querySelector(".prow");
-  const ta = document.createElement("textarea");
-  ta.className = "body-edit"; ta.value = c.body; ta.setAttribute("aria-label", "Detail");
-  ta.placeholder = "Write the detail. Start a line with ## for a fold-out section, - for bullets. Cmd/Ctrl + Enter to finish.";
-  body.replaceChildren(...(prow ? [prow] : []), ta);
-  const size = () => { ta.style.height = "auto"; ta.style.height = Math.max(90, ta.scrollHeight + 2) + "px"; };
-  size(); ta.focus({ preventScroll: true }); ta.setSelectionRange(ta.value.length, ta.value.length);
-  let pushed = false;
-  ta.addEventListener("input", () => { if (!pushed){ pushUndo(); pushed = true; } const cc = getCard(id); if (cc){ cc.body = ta.value; markDirty(); } size(); });
-  ta.addEventListener("keydown", ev => { ev.stopPropagation(); if (ev.key === "Escape" || (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey))){ ev.preventDefault(); ta.blur(); } });
-  ta.addEventListener("pointerdown", ev => ev.stopPropagation());
-  ta.addEventListener("blur", () => { el._bodyEditing = false; el._body = null; const cc = getCard(id); if (cc) updateCardEl(el, cc); if (dirty) flushSoon(); });
+  el._bodyEditing = true; el.classList.add("body-editing");
+  const keepEls = [...body.children].filter(n => n.matches(".prow,.orow"));
+  const ed = document.createElement("div");
+  ed.className = "md-edit"; ed.contentEditable = "true"; ed.setAttribute("spellcheck", "true"); ed.setAttribute("aria-label", "Detail");
+  ed.innerHTML = mdEdit(c.body);
+  body.replaceChildren(...keepEls, ed);
+  ed.focus({ preventScroll: true });
+  caretAt(ed, x, y);
+  let changed = false;
+  const sync = () => { const cc = getCard(id); if (!cc) return; if (!changed){ pushUndo(); changed = true; } cc.body = domToMd(ed).slice(0, 40000); markDirty(); };
+  ed.addEventListener("input", sync);
+  ed.addEventListener("keydown", ev => { ev.stopPropagation(); if (ev.key === "Escape" || (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey))){ ev.preventDefault(); ed.blur(); } });
+  ed.addEventListener("paste", ev => { ev.preventDefault(); ev.stopPropagation(); document.execCommand("insertText", false, ev.clipboardData.getData("text/plain") || ""); });
+  ed.addEventListener("pointerdown", ev => ev.stopPropagation());
+  ed.addEventListener("click", ev => { if (ev.target.closest("a")) ev.preventDefault(); });   // while typing, a click on a link just puts the cursor there
+  ed.addEventListener("blur", () => {
+    if (changed){ const cc = getCard(id); if (cc){ cc.body = domToMd(ed).slice(0, 40000); markDirty(); } }
+    el._bodyEditing = false; el.classList.remove("body-editing"); el._body = null;
+    const cc = getCard(id); if (cc) updateCardEl(el, cc);
+    if (dirty) flushSoon();
+  });
 }
 
 function startEditing(id, focusTitle){
@@ -1585,7 +1651,7 @@ function wireCard(el, id){
   el._slot.addEventListener("click", e => {
     const b = e.target.closest("[data-p]"); if (b){ e.stopPropagation(); setPriority(id, +b.dataset.p); return; }
     // Click the detail text to edit it where it is (links and fold-out section headings keep working).
-    if (e.target.closest(".body") && !e.target.closest("a,summary,.prow,.orow,textarea,input") && editingId !== id && !el._bodyEditing) startBodyEdit(el, id);
+    if (e.target.closest(".body") && !e.target.closest("a,summary,.prow,.orow,textarea,input") && editingId !== id && !el._bodyEditing) startBodyEdit(el, id, e.clientX, e.clientY);
   });
   el.querySelectorAll(".port").forEach(p => p.addEventListener("pointerdown", e => startConnect(e, id, p)));
   wireResize(el, id);
