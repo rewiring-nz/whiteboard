@@ -152,7 +152,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .grid .cell:focus{box-shadow:inset 0 0 0 2px var(--accent); background:var(--surface)}
 .grid .cell:empty::before{content:attr(data-ph); color:var(--muted); opacity:.5}
 .grid .k-title .cell{font-weight:600}
-.grid .k-title{min-width:180px; width:220px} .grid .k-summary{min-width:220px} .grid .k-body{min-width:320px} .grid .k-custom{min-width:140px}
+.grid .k-title{min-width:180px; width:220px} .grid .k-owner{min-width:130px; width:150px} .grid .k-summary{min-width:220px} .grid .k-body{min-width:320px} .grid .k-custom{min-width:140px}
 .grid .k-body .cell:not(:focus){max-height:7.4em; overflow:hidden}
 .grid .k-color{width:38px; text-align:center}
 .grid .k-color button{width:18px; height:18px; border-radius:50%; border:1px solid var(--card-line); margin:9px; cursor:pointer; padding:0}
@@ -182,6 +182,12 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .card.c-p8{--tint:var(--p8)}
 .card.c-p9{--tint:var(--p9)}
 .card.c-p10{--tint:var(--p10)}
+.orow{display:flex; align-items:center; gap:8px; margin:-4px 0 10px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.owner-in{flex:1; min-width:0; max-width:220px; height:26px; border:1px solid transparent; border-radius:6px; padding:0 7px; background:color-mix(in srgb, var(--surface) 55%, transparent);
+  font:500 13px var(--f-body); color:var(--ink); text-transform:none; letter-spacing:0}
+.owner-in:hover{border-color:var(--card-line)}
+.owner-in:focus{outline:none; border-color:var(--accent); background:var(--surface)}
+.owner-in::placeholder{color:var(--muted); opacity:.7}
 .prow{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 10px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
 .pp{display:flex; gap:3px; flex-wrap:wrap}
 .pp button{width:22px; height:22px; border-radius:5px; border:1px solid var(--card-line); background:var(--pc); font:600 11px var(--f-body); color:var(--ink); cursor:pointer; padding:0; letter-spacing:0}
@@ -572,6 +578,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <div class="vlist" id="vlist"></div>
   </aside>
 </main>
+<datalist id="ownerList"></datalist>
 <input type="file" id="importFile" accept=".json,application/json" hidden>
 
 <script>
@@ -668,7 +675,7 @@ function sanitizeBoard(o){
     if (kind === "emoji"){ extra.emoji = String(c.emoji ?? "").slice(0, 16) || "⭐"; }
     return { ...keepUnknown(c, CARD_KEYS), id, kind, ...extra, x: Math.round(+c.x || 0), y: Math.round(+c.y || 0), w: kind === "card" ? clamp(Math.round(+c.w || 260), 180, 640) : clamp(Math.round(+c.w || 200), 24, 1600),
       title: String(c.title ?? "").slice(0, 300), summary: String(c.summary ?? "").slice(0, 1000), body: String(c.body ?? "").slice(0, 40000),
-      color: (COLORS.includes(c.color) || c.color === "auto" || /^#[0-9a-f]{6}$/i.test(c.color)) ? String(c.color).toLowerCase() : "plain", open: !!c.open, fields: cleanFields(c.fields), priority: clamp(Math.round(+c.priority || 0), 0, 10) };
+      color: (COLORS.includes(c.color) || c.color === "auto" || /^#[0-9a-f]{6}$/i.test(c.color)) ? String(c.color).toLowerCase() : "plain", open: !!c.open, fields: cleanFields(c.fields), priority: clamp(Math.round(+c.priority || 0), 0, 10), owner: String(c.owner ?? "").replace(/\s+/g, " ").trim().slice(0, 80) };
   });
   const ids = new Set(cards.map(c => c.id));
   const edges = (Array.isArray(o.edges) ? o.edges : []).filter(e => e && ids.has(e.from) && ids.has(e.to) && e.from !== e.to)
@@ -685,7 +692,7 @@ function sanitizeBoard(o){
   });
   return { ...keepUnknown(o, BOARD_KEYS), name: String(o.name ?? "Untitled board").slice(0, 120) || "Untitled board", cards, edges, columns, strokes, updatedAt: +o.updatedAt || 0, by: typeof o.by === "string" ? o.by : "" };
 }
-const CARD_KEYS = new Set(["id","kind","asset","url","disp","meta","emoji","x","y","w","title","summary","body","color","open","fields","priority"]);
+const CARD_KEYS = new Set(["id","kind","asset","url","disp","meta","emoji","x","y","w","title","summary","body","color","open","fields","priority","owner"]);
 const BOARD_KEYS = new Set(["name","cards","edges","columns","strokes","updatedAt","by","v"]);
 function keepUnknown(o, known){
   const out = {};
@@ -817,11 +824,18 @@ async function prepareImage(file){
 function esc(s){ return s.replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch])); }
 function inline(s){
   let h = esc(s);
+  // Links are set aside first so the other formatting can't break them: [text](https://…) and bare web addresses.
+  const links = [];
+  const keep = html => { links.push(html); return "\u0001" + (links.length - 1) + "\u0002"; };
+  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (m, t, u) => keep(`<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`));
+  h = h.replace(/\bhttps?:\/\/[^\s<\u0001]+/g, u => {
+    const trail = (u.match(/[.,;:!?)\]]+$/) || [""])[0]; u = u.slice(0, u.length - trail.length);
+    return keep(`<a href="${u}" target="_blank" rel="noopener noreferrer" title="${u}">${esc(shortUrl(u.replace(/&amp;/g, "&")))}</a>`) + trail;
+  });
   h = h.replace(/`([^`]+)`/g, "<code>$1</code>");
   h = h.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
   h = h.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
-  h = h.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
-  return h;
+  return h.replace(/\u0001(\d+)\u0002/g, (m, i) => links[+i]);
 }
 function mdBlocks(lines){
   let out = "", list = null, para = [];
@@ -989,8 +1003,9 @@ function updateCardEl(el, c){
   if (editing){
     if (el._mode !== "edit") buildEditor(el, c);
   } else if (el._bodyEditing){ /* typing in the detail: leave it alone */ }
+  else if (el._mode === "view" && el._body === c.body + "\u0000" + c.priority){ const oi = el._slot.querySelector(".owner-in"); if (oi && document.activeElement !== oi && oi.value !== (c.owner || "")) oi.value = c.owner || ""; }
   else if (el._mode !== "view" || el._body !== c.body + "\u0000" + c.priority){
-    el._slot.innerHTML = `<div class="body">${prioHTML(c.priority)}${md(c.body)}</div>`;
+    el._slot.innerHTML = `<div class="body">${prioHTML(c.priority)}${ownerHTML(c)}${md(c.body)}</div>`;
     el._mode = "view"; el._body = c.body + "\u0000" + c.priority;
   } else if (el._mode === "edit") markPrio(el, c.priority);
 }
@@ -1018,6 +1033,7 @@ function buildEditor(el, c){
   const touch = () => { if (!editUndoPushed){ pushUndo(); editUndoPushed = true; } };
   ti.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; cc.title = ti.value; updateCardEl(el, cc); markDirty(); });
   su.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; cc.summary = su.value; updateCardEl(el, cc); markDirty(); });
+  bo.addEventListener("keydown", ev => { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)){ ev.preventDefault(); stopEditing(); } });
   bo.addEventListener("input", () => { touch(); const cc = getCard(id); if (!cc) return; cc.body = bo.value; size(); markDirty(); });
   const swHost = el._slot.querySelector(".swatches");
   const drawSw = () => swHost.replaceChildren(colourChoices(getCard(id)?.color || "plain", k => {
@@ -1080,13 +1096,13 @@ function startBodyEdit(el, id){
   const prow = body.querySelector(".prow");
   const ta = document.createElement("textarea");
   ta.className = "body-edit"; ta.value = c.body; ta.setAttribute("aria-label", "Detail");
-  ta.placeholder = "Write the detail. Start a line with ## for a fold-out section, - for bullets.";
+  ta.placeholder = "Write the detail. Start a line with ## for a fold-out section, - for bullets. Cmd/Ctrl + Enter to finish.";
   body.replaceChildren(...(prow ? [prow] : []), ta);
   const size = () => { ta.style.height = "auto"; ta.style.height = Math.max(90, ta.scrollHeight + 2) + "px"; };
   size(); ta.focus({ preventScroll: true }); ta.setSelectionRange(ta.value.length, ta.value.length);
   let pushed = false;
   ta.addEventListener("input", () => { if (!pushed){ pushUndo(); pushed = true; } const cc = getCard(id); if (cc){ cc.body = ta.value; markDirty(); } size(); });
-  ta.addEventListener("keydown", ev => { ev.stopPropagation(); if (ev.key === "Escape") ta.blur(); });
+  ta.addEventListener("keydown", ev => { ev.stopPropagation(); if (ev.key === "Escape" || (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey))){ ev.preventDefault(); ta.blur(); } });
   ta.addEventListener("pointerdown", ev => ev.stopPropagation());
   ta.addEventListener("blur", () => { el._bodyEditing = false; el._body = null; const cc = getCard(id); if (cc) updateCardEl(el, cc); if (dirty) flushSoon(); });
 }
@@ -1339,10 +1355,21 @@ function wireCard(el, id){
     if (!selected || selected.id !== id) select({ type: "card", id });
   });
   el.addEventListener("dblclick", e => e.stopPropagation());
+  // Responsible: type a name in the unfolded card
+  let ownerPushed = false;
+  el._slot.addEventListener("focusin", e => { if (e.target.classList.contains("owner-in")){ ownerPushed = false; fillOwnerList(); } });
+  el._slot.addEventListener("input", e => {
+    if (!e.target.classList.contains("owner-in")) return;
+    const c = getCard(id); if (!c) return;
+    if (!ownerPushed){ pushUndo(); ownerPushed = true; }
+    c.owner = e.target.value.slice(0, 80); markDirty();
+  });
+  el._slot.addEventListener("keydown", e => { if (e.target.classList.contains("owner-in")){ e.stopPropagation(); if (e.key === "Enter" || e.key === "Escape"){ e.preventDefault(); e.target.blur(); } } });
+  el._slot.addEventListener("focusout", e => { if (e.target.classList.contains("owner-in")){ const c = getCard(id); if (c){ c.owner = c.owner.replace(/\s+/g, " ").trim(); e.target.value = c.owner; } if (dirty) flushSoon(); } });
   el._slot.addEventListener("click", e => {
     const b = e.target.closest("[data-p]"); if (b){ e.stopPropagation(); setPriority(id, +b.dataset.p); return; }
     // Click the detail text to edit it where it is (links and fold-out section headings keep working).
-    if (e.target.closest(".body") && !e.target.closest("a,summary,.prow,textarea") && editingId !== id && !el._bodyEditing) startBodyEdit(el, id);
+    if (e.target.closest(".body") && !e.target.closest("a,summary,.prow,.orow,textarea,input") && editingId !== id && !el._bodyEditing) startBodyEdit(el, id);
   });
   el.querySelectorAll(".port").forEach(p => p.addEventListener("pointerdown", e => startConnect(e, id, p)));
   wireResize(el, id);
@@ -2130,6 +2157,16 @@ function prioHTML(p){
   return `<div class="prow"><span>Priority</span><div class="pp" role="group" aria-label="Priority, 1 is highest">` +
     Array.from({ length: 10 }, (_, i) => `<button type="button" data-p="${i + 1}" class="${p === i + 1 ? "cur" : ""}" style="--pc:var(--p${i + 1})" aria-pressed="${p === i + 1}" title="${i === 0 ? "1: highest" : i === 9 ? "10: lowest" : i + 1}">${i + 1}</button>`).join("") + `</div></div>`;
 }
+function ownerHTML(c){
+  return `<div class="orow"><span>Responsible</span><input class="owner-in" list="ownerList" maxlength="80" placeholder="Add a name" aria-label="Responsible" value="${esc(c.owner || "")}"></div>`;
+}
+// Names already used on any board, so people are spelled the same way each time.
+function fillOwnerList(){
+  const names = new Set();
+  for (const b of Object.values(boardData)) for (const c of b.cards) if (c.owner) names.add(c.owner);
+  if (board) for (const c of board.cards) if (c.owner) names.add(c.owner);
+  $("#ownerList").replaceChildren(...[...names].sort((a, b) => a.localeCompare(b)).map(n => { const o = document.createElement("option"); o.value = n; return o; }));
+}
 function markPrio(el, p){ el._slot.querySelectorAll("[data-p]").forEach(b => { const on = +b.dataset.p === p; b.classList.toggle("cur", on); b.setAttribute("aria-pressed", String(on)); }); }
 function setPriority(id, n){
   const c = getCard(id); if (!c) return;
@@ -2308,7 +2345,7 @@ function beginInk(e, el){
 let mode = "board";
 let tSort = { key: null, dir: 1 };
 let tUndoPushed = false;
-const BASE_COLS = [{ key: "title", name: "Title", ph: "Untitled" }, { key: "summary", name: "Summary", ph: "" }, { key: "body", name: "Detail", ph: "" }];
+const BASE_COLS = [{ key: "title", name: "Title", ph: "Untitled" }, { key: "owner", name: "Responsible", ph: "" }, { key: "summary", name: "Summary", ph: "" }, { key: "body", name: "Detail", ph: "" }];
 const tvBody = $("#tvBody");
 function tableBusy(){ const a = document.activeElement; return mode === "table" && !!(a && a.closest && a.closest("#tv .cell")); }
 const getVal = (c, k) => k.startsWith("f:") ? (c.fields[k.slice(2)] || "") : (c[k] || "");
