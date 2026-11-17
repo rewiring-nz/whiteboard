@@ -319,6 +319,10 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
   font:600 12px/1 var(--f-body); color:var(--muted); background:color-mix(in srgb, var(--board) 88%, transparent);
   border-left:1px solid color-mix(in srgb, var(--ink) 16%, transparent); border-bottom:1px solid var(--line)}
 #tlHead b.now{color:var(--accent)}
+/* Vertical timeline: rows down the board, labels pinned to the left edge */
+#tlHead.v{bottom:0; height:auto}
+#tl.v i{top:auto; bottom:auto; left:0; right:0; border-left:0; border-top:1px solid color-mix(in srgb, var(--ink) 16%, transparent)}
+#tlHead.v b{left:8px; width:auto; height:24px; padding:0 9px; border:1px solid var(--line); border-radius:0 0 7px 7px; border-top:0}
 .menu .tl-start{display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:13px; color:var(--muted)}
 .menu .tl-start input{flex:1; min-width:0; font:inherit; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:4px 6px}
 .menu hr{border:0; border-top:1px solid var(--line); margin:6px 4px}
@@ -797,7 +801,9 @@ function cleanTimeline(t){
   if (!t || typeof t !== "object" || !TL_UNITS.includes(t.unit)) return null;
   const d = new Date();
   const start = /^\d{4}-(0[1-9]|1[0-2])$/.test(t.start) ? t.start : d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
-  return { unit: t.unit, x: clamp(Math.round(+t.x || 0), -1e6, 1e6), start };
+  const out = { unit: t.unit, x: clamp(Math.round(+t.x || 0), -1e6, 1e6), start };
+  if (t.dir === "v"){ out.dir = "v"; out.y = clamp(Math.round(+t.y || 0), -1e6, 1e6); }   // vertical: rows down the board
+  return out;
 }
 function keepUnknown(o, known){
   const out = {};
@@ -1877,25 +1883,31 @@ function drawTimeline(){
   $("#tlBtn").classList.toggle("on", !!t);
   if (!t){ if (!layer.hidden){ layer.hidden = head.hidden = true; layer.textContent = head.textContent = ""; } return; }
   layer.hidden = head.hidden = false;
-  const w = TL_W * view.s, vw = vp.clientWidth;
-  let i0 = Math.floor((-view.x / view.s - t.x) / TL_W), i1 = Math.ceil(((vw - view.x) / view.s - t.x) / TL_W);
+  const v = t.dir === "v", vx = v ? view.y : view.x, o = v ? t.y : t.x;
+  if (layer.classList.contains("v") !== v){ layer.classList.toggle("v", v); head.classList.toggle("v", v); layer.textContent = head.textContent = ""; }
+  const w = TL_W * view.s, vw = v ? vp.clientHeight : vp.clientWidth;
+  let i0 = Math.floor((-vx / view.s - o) / TL_W), i1 = Math.ceil(((vw - vx) / view.s - o) / TL_W);
   if (t.unit === "weeks") i0 = Math.max(0, i0);
   const n = Math.max(0, i1 - i0);
   while (layer.children.length < n){ layer.appendChild(document.createElement("i")); head.appendChild(document.createElement("b")); }
   while (layer.children.length > n){ layer.lastChild.remove(); head.lastChild.remove(); }
   for (let k = 0; k < n; k++){
-    const i = i0 + k, left = view.x + (t.x + i * TL_W) * view.s, now = tlIsNow(t, i);
+    const i = i0 + k, left = vx + (o + i * TL_W) * view.s, now = tlIsNow(t, i);
     const a = layer.children[k], b = head.children[k];
-    a.style.left = b.style.left = left + "px"; a.style.width = b.style.width = w + "px";
+    if (v){ a.style.top = left + "px"; a.style.height = w + "px"; b.style.top = clamp(0, left, left + w - 24) + "px"; }   // tag stays in view while its row is
+    else { a.style.left = b.style.left = left + "px"; a.style.width = b.style.width = w + "px"; }
     a.className = now ? "now" : (i % 2 ? "alt" : "");
     b.className = now ? "now" : "";
-    const txt = tlLabel(t, i, w); if (b.textContent !== txt) b.textContent = txt;
+    const txt = tlLabel(t, i, v ? 130 : w); if (b.textContent !== txt) b.textContent = txt;
   }
 }
-/* Which timeline column(s) a card covers: a column counts when at least 40px of the card sits in it. */
+/* Which timeline column(s) a card covers: a column counts when at least 40px of the card sits in it.
+   (On a vertical timeline the same goes for rows, using the card's height.) */
 function tlSpan(c){
   const t = board && board.timeline; if (!t) return null;
-  const el = els.get(c.id), w = (el && el.offsetWidth) || c.w, x0 = c.x - t.x, x1 = x0 + w;
+  const el = els.get(c.id), v = t.dir === "v";
+  const r = v && renderPos.get(c.id);                 // where the card is drawn (it may be pushed down) and its last height
+  const w = v ? ((el && el.offsetHeight) || (r && r.h) || 60) : ((el && el.offsetWidth) || c.w), x0 = v ? (r ? r.y : c.y) - t.y : c.x - t.x, x1 = x0 + w;
   let i0 = Math.floor((x0 + 40) / TL_W), i1 = Math.floor((x1 - 40) / TL_W);
   if (i1 < i0) i0 = i1 = Math.floor((x0 + w / 2) / TL_W);
   return [i0, i1];
@@ -1920,10 +1932,19 @@ function tlOrigin(){
   const xs = board.cards.map(c => c.x);
   return xs.length ? Math.round(Math.min(...xs) - (TL_W - 260) / 2) : 0;
 }
+function tlOriginY(){
+  const ys = board.cards.map(c => c.y);
+  return ys.length ? Math.round(Math.min(...ys) - 20) : 0;
+}
 function setTimeline(unit){
   if (!board) return;
   const old = board.timeline;
-  board.timeline = unit ? cleanTimeline({ unit, x: old ? old.x : tlOrigin(), start: old && old.start }) : null;
+  board.timeline = unit ? cleanTimeline({ ...(old || {}), unit, x: old ? old.x : tlOrigin(), y: old && old.dir === "v" ? old.y : tlOriginY() }) : null;
+  drawTimeline(); markDirty();
+}
+function setTimelineDir(dir){
+  const t = board && board.timeline; if (!t || (t.dir || "h") === dir) return;
+  board.timeline = cleanTimeline(dir === "v" ? { ...t, dir: "v", y: tlOriginY() } : { ...t, dir: "h" });
   drawTimeline(); markDirty();
 }
 function buildTimelineMenu(m){
@@ -1933,6 +1954,9 @@ function buildTimelineMenu(m){
   item(m, "Months", () => setTimeline("months"), cur === "months" ? "cur" : "");
   item(m, "Years", () => setTimeline("years"), cur === "years" ? "cur" : "");
   if (!t) return;
+  m.appendChild(document.createElement("hr"));
+  item(m, "Across (columns)", () => setTimelineDir("h"), t.dir === "v" ? "" : "cur", "Time runs left to right");
+  item(m, "Down (rows)", () => setTimelineDir("v"), t.dir === "v" ? "cur" : "", "Time runs top to bottom");
   m.appendChild(document.createElement("hr"));
   if (t.unit !== "weeks"){
     const row = document.createElement("label"); row.className = "tl-start";
@@ -1947,7 +1971,7 @@ function buildTimelineMenu(m){
     });
     row.appendChild(inp); m.appendChild(row);
   }
-  item(m, "Line up with the cards", () => { if (board.timeline){ board.timeline = cleanTimeline({ ...board.timeline, x: tlOrigin() }); drawTimeline(); markDirty(); } });
+  item(m, "Line up with the cards", () => { const t = board.timeline; if (t){ board.timeline = cleanTimeline(t.dir === "v" ? { ...t, y: tlOriginY() } : { ...t, x: tlOrigin() }); drawTimeline(); markDirty(); } });
 }
 $("#tlBtn").addEventListener("click", e => { if (menuEl && menuEl._tl){ closeMenu(); return; } openMenu(e.currentTarget, buildTimelineMenu); menuEl._tl = true; });
 window.addEventListener("resize", () => drawTimeline());

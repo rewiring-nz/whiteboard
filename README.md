@@ -11,7 +11,7 @@ Rewiring Aotearoa's whiteboard of fold-out cards.
 - Paste (or drop) pictures, links and text onto the board. Links appear as short pills; hover to switch one to a preview card (previews come from microlink.io, which is sent the link only when you choose *Show as card*).
 - Emoji button: adds an emoji to the board, or into the text you're typing.
 - **Text** (or T): a floating heading for a section of cards. Click it once to select, again to edit; Shift + Enter starts a new line; A− / A+ change the size. A heading moves down when a card above it unfolds, and moves with the card under it when you press Organise.
-- **Timeline**: column bands for Weeks (Week 1, 2, 3…), Months or Years behind the cards, a little wider than a card. They carry on as far as you pan or zoom out. Choose the first month or year, or *Line up with the cards*. It's saved with the board, so everyone sees it. While it's on, the Table gets a Week / Month / Year column showing where each card sits (a card spanning columns shows a range, e.g. *Jan – Feb 2027*); it's included in CSV exports.
+- **Timeline**: column bands for Weeks (Week 1, 2, 3…), Months or Years behind the cards, a little wider than a card. They carry on as far as you pan or zoom out. Choose *Across* (columns, time left to right) or *Down* (rows, time top to bottom), the first month or year, or *Line up with the cards*. It's saved with the board, so everyone sees it. While it's on, the Table gets a Week / Month / Year column showing where each card sits (a card spanning columns shows a range, e.g. *Jan – Feb 2027*); it's included in CSV exports.
 - The **?** button bottom left opens a quick guide.
 - Cmd/Ctrl + C, X and V copy, cut and paste cards and drawings (between boards too). Unfolded cards also have a Duplicate button.
 - Set a priority from 1 (highest) to 10 and who is **Responsible** on an unfolded card (names already used are suggested). Both are columns in the Table too.
@@ -77,6 +77,6 @@ Webflow's page password only hides the Webflow page; the board's own password is
 
 ## Rules for changing the app
 
-- Never remove or rename a field or colour name that saved boards use (cards: kind, title, summary, body, color, open, priority, owner, fields, asset, url, disp, meta, emoji; boards: cards, edges, columns, strokes, timeline; strokes: g). Text headings are cards with kind "text": the words are in title and the font size in w. New fields need a default so older boards still load.
+- Never remove or rename a field or colour name that saved boards use (cards: kind, title, summary, body, color, open, priority, owner, fields, asset, url, disp, meta, emoji; boards: cards, edges, columns, strokes, timeline; strokes: g). The timeline is { unit, x, start }, plus dir "v" and y when it runs down the board. Text headings are cards with kind "text": the words are in title and the font size in w. New fields need a default so older boards still load.
 - Keep the internal storage names (`foldout-board` IndexedDB, `fb-…` keys, `app: "foldout-board"` in exports). They date from the tool's first name, and offline boards live under them.
 - Back up the data repo (it's git, so just note the current commit) before deploying a change that touches how boards are saved.
