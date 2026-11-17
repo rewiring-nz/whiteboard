@@ -1411,9 +1411,9 @@ function boundaryPoint(r, dx, dy){
 }
 /* ---------- connector routing ----------
    Connectors leave from the side of one card and enter the side of the other as a smooth curve.
-   They behave like a rope: where the curve would come within ROUTE_M of another card, that part is pushed
-   sideways (away from the card's centre) and the push is spread smoothly along the rope, so it bends round
-   the card instead of switching to a different shape. The same geometry always gives the same line, so
+   They behave like a stiff cable: where the curve would come within ROUTE_M of another card, that part is pushed
+   sideways (away from the card's centre) and the cable bows smoothly round the card instead of switching to a
+   different shape or kinking at corners. The same geometry always gives the same line, so
    moving a card changes it gradually. */
 const ROUTE_M = 18, ROUTE_N = 36, routeCache = new Map(), routeSide = new Map();
 function edgeEnds(a, b){
@@ -1492,40 +1492,74 @@ function ropeRoute(e, p, q, obs){
     g.forEach(o => o.side = side);
   }
   if (routeSide.size > 4000) routeSide.clear();
-  const D = base.map(() => [0, 0]), P = base.map(b => b.slice()), BN = base.map((_, i) => nrm(base, i));   // push directions come from the original curve, so the rope can't curl up
-  for (let it = 0; it < 90; it++){                     // the first two and last two points stay put, so the ends leave and enter cards straight
-    // push points that are too close to a card out sideways
+  // The line is a stiff cable. It can only move sideways (along the original curve's normal), its ends are held
+  // straight where they leave and enter the cards, and every point must stay ROUTE_M clear of other cards.
+  // Of all shapes that do that, it takes the one that bends least, so it bows round cards in one smooth sweep.
+  // That shape is unique, so it changes smoothly as cards move.
+  const BN = base.map((_, i) => nrm(base, i));
+  const sgn = new Int8Array(N + 1), need = new Float64Array(N + 1);
+  // near its ends (first and last 44px) the cable is too stiff to dodge, so there it may pass close to a card
+  const arc = [0]; for (let i = 1; i <= N; i++) arc.push(arc[i - 1] + Math.hypot(base[i][0] - base[i - 1][0], base[i][1] - base[i - 1][1]));
+  const free = i => arc[i] < 44 || arc[N] - arc[i] < 44;
+  const want = (i, dir, t) => { if (free(i)) return false; if (!sgn[i]){ sgn[i] = dir; need[i] = t; return true; } if (sgn[i] === dir && t > need[i] + 0.25){ need[i] = t; return true; } return false; };
+  for (let i = 2; i <= N - 2; i++) for (const o of obs){
+    const [x, y] = base[i];
+    if (x > o.x0 && x < o.x1 && y > o.y0 && y < o.y1) want(i, o.side, exitDist(o, x, y, BN[i][0] * o.side, BN[i][1] * o.side) + 0.5);
+  }
+  let d = new Float64Array(N + 1);
+  const at = i => [base[i][0] + BN[i][0] * d[i], base[i][1] + BN[i][1] * d[i]];
+  for (let round = 0; round < 6; round++){
+    if (sgn.some(v => v)) d = cableSolve(N, sgn, need);
+    let more = false;                                 // the bowed cable may now touch other cards: keep it clear of those too
     for (let i = 2; i <= N - 2; i++){
-      const [x, y] = P[i];
+      const [x, y] = at(i);
       for (const o of obs){
         if (x <= o.x0 || x >= o.x1 || y <= o.y0 || y >= o.y1) continue;
-        const n = BN[i], dx = n[0] * o.side, dy = n[1] * o.side;
-        const t = exitDist(o, P[i][0], P[i][1], dx, dy);
-        D[i][0] += dx * t; D[i][1] += dy * t; P[i][0] += dx * t; P[i][1] += dy * t;
+        const dir = sgn[i] || o.side, t = exitDist(o, x, y, BN[i][0] * dir, BN[i][1] * dir);
+        if (want(i, dir, dir * d[i] + t + 0.5)) more = true;
       }
     }
-    if (it === 89) break;
-    // spread the pushes along the rope (smooths the displacement, not the curve, so the free parts keep their shape)
-    for (let i = 2; i <= N - 2; i++){
-      D[i][0] += 0.95 * ((D[i-1][0] + D[i+1][0]) / 2 - D[i][0]);
-      D[i][1] += 0.95 * ((D[i-1][1] + D[i+1][1]) / 2 - D[i][1]);
-      P[i][0] = base[i][0] + D[i][0]; P[i][1] = base[i][1] + D[i][1];
-    }
+    if (!more) break;
   }
-  // round off the bends: smooth the rope itself, letting it cut into the margin but never closer than 6px to a card
-  const inner = obs.map(o => { const k = Math.max(0, ROUTE_M - 6) * (o.x1 - o.x0 > 2 * ROUTE_M ? 1 : 0); return { x0: o.x0 + k, y0: o.y0 + k, x1: o.x1 - k, y1: o.y1 - k, side: o.side }; });
-  for (let it = 0; it < 14; it++){
-    for (let i = 2; i <= N - 2; i++){
-      const x = (P[i-1][0] + P[i+1][0]) / 2, y = (P[i-1][1] + P[i+1][1]) / 2;
-      P[i][0] += 0.6 * (x - P[i][0]); P[i][1] += 0.6 * (y - P[i][1]);
-      for (const o of inner){
-        if (P[i][0] <= o.x0 || P[i][0] >= o.x1 || P[i][1] <= o.y0 || P[i][1] >= o.y1) continue;
-        const dx = BN[i][0] * o.side, dy = BN[i][1] * o.side, t = exitDist(o, P[i][0], P[i][1], dx, dy);
-        P[i][0] += dx * t; P[i][1] += dy * t;
-      }
+  return base.map((_, i) => at(i));
+}
+/* Least-bending sideways displacement d for the cable: d = 0 at the ends (0, 1, N-1, N), and sgn[i] * d[i] >= need[i]
+   wherever sgn[i] is set. Minimises bending (second differences) plus a little stretch (first differences),
+   solved exactly with an active set: points touching a card are held there, the rest are free. */
+function cableSolve(N, sgn, need){
+  const KB = 1, KT = 0.3;                 // stiffness vs tension: stiff enough not to kink, taut enough not to bow out far
+  const Q = Array.from({ length: N + 1 }, () => new Float64Array(N + 1));
+  for (let i = 1; i < N; i++){ const c = [i - 1, i, i + 1], w = [1, -2, 1]; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) Q[c[a]][c[b]] += KB * w[a] * w[b]; }
+  for (let i = 0; i < N; i++){ Q[i][i] += KT; Q[i + 1][i + 1] += KT; Q[i][i + 1] -= KT; Q[i + 1][i] -= KT; }
+  const end = i => i < 2 || i > N - 2, held = new Set();
+  for (let i = 0; i <= N; i++) if (sgn[i]) held.add(i);
+  let d = new Float64Array(N + 1);
+  const solve = () => {
+    const x = new Float64Array(N + 1), F = [];
+    for (let i = 0; i <= N; i++){ if (end(i)) continue; if (held.has(i)) x[i] = sgn[i] * need[i]; else F.push(i); }
+    const n = F.length; if (!n) return x;
+    const A = F.map(i => Float64Array.from(F, j => Q[i][j])), b = new Float64Array(n);
+    F.forEach((i, r) => { for (const j of held) b[r] -= Q[i][j] * x[j]; });
+    for (let k = 0; k < n; k++) for (let r = k + 1; r < Math.min(n, k + 3); r++){   // banded: only two rows below
+      if (!A[r][k]) continue;
+      const f = A[r][k] / A[k][k];
+      for (let c = k; c < Math.min(n, k + 3); c++) A[r][c] -= f * A[k][c];
+      b[r] -= f * b[k];
     }
+    for (let k = n - 1; k >= 0; k--){ let v = b[k]; for (let c = k + 1; c < Math.min(n, k + 3); c++) v -= A[k][c] * x[F[c]]; x[F[k]] = v / A[k][k]; }
+    return x;
+  };
+  for (let it = 0; it < 4 * N; it++){
+    d = solve();
+    let add = -1, worst = 0.01;
+    for (let i = 0; i <= N; i++) if (sgn[i] && !held.has(i) && need[i] - sgn[i] * d[i] > worst){ worst = need[i] - sgn[i] * d[i]; add = i; }
+    if (add >= 0){ held.add(add); continue; }
+    let drop = -1, low = -1e-7;                       // a held point the cable would rather leave: let it go
+    for (const i of held){ let g = 0; for (let j = Math.max(0, i - 2); j <= Math.min(N, i + 2); j++) g += Q[i][j] * d[j]; if (sgn[i] * g < low){ low = sgn[i] * g; drop = i; } }
+    if (drop < 0) break;
+    held.delete(drop);
   }
-  return P;
+  return d;
 }
 /* Smooth curve through the rope's points (Catmull-Rom as cubic Béziers). */
 function splinePath(P){
