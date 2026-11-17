@@ -1651,6 +1651,65 @@ vp.addEventListener("dblclick", e => {
   addCardAt((e.clientX - r.left - view.x) / view.s - 20, (e.clientY - r.top - view.y) / view.s - 20);
 });
 
+/* ---------- several people on one board ----------
+   Each board remembers the last version it had from GitHub (its "base"). When someone else's save arrives
+   while you have changes, the two are merged card by card and field by field against that base, so both
+   people's work is kept. Only when two people change the same field of the same card at once does one win:
+   the newest edit (yours, as you're saving now). The other version stays in History. A deleted item stays
+   deleted unless someone edited it meanwhile, in which case it's kept. */
+const baseData = OFFLINE ? {} : (ls.get("fb-base", {}) || {});
+function setBase(id, b){ if (OFFLINE) return; baseData[id] = sanitizeBoard(b); ls.set("fb-base", baseData); }
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const TEXT_FIELDS = new Set(["title", "summary", "body", "owner", "name"]);
+function mergeObj(b, l, r){
+  b = b || {}; let c = 0; const out = {};
+  for (const k of new Set([...Object.keys(l), ...Object.keys(r)])){
+    if (k === "fields") continue;
+    const bv = b[k], lv = l[k], rv = r[k];
+    if (same(lv, rv)) out[k] = lv;
+    else if (same(lv, bv)){ if (rv !== undefined) out[k] = rv; }
+    else if (same(rv, bv)){ if (lv !== undefined) out[k] = lv; }
+    else { out[k] = lv !== undefined ? lv : rv; if (TEXT_FIELDS.has(k)) c++; }
+  }
+  if (l.fields || r.fields){ const m = mergeObj(b.fields, l.fields || {}, r.fields || {}); out.fields = m.v; c += m.c; }
+  return { v: out, c };
+}
+function mergeList(bL, lL, rL, deep){
+  const B = new Map((bL || []).map(x => [x.id, x])), L = new Map((lL || []).map(x => [x.id, x])), R = new Map((rL || []).map(x => [x.id, x]));
+  const ids = [...L.keys(), ...[...R.keys()].filter(id => !L.has(id))];
+  const out = []; let c = 0;
+  for (const id of ids){
+    const b = B.get(id), l = L.get(id), r = R.get(id);
+    if (l && r){ if (deep){ const m = mergeObj(b, l, r); out.push(m.v); c += m.c; } else out.push(same(l, b) ? r : l); }
+    else if (l){ if (!b || !same(l, b)) out.push(l); }      // theirs deleted it: keep only if we added or changed it
+    else if (r){ if (!b || !same(r, b)) out.push(r); }      // we deleted it: keep only if they added or changed it
+  }
+  return { v: out, c };
+}
+function mergeBoards(base, local, remote){
+  base = base || null;
+  const cards = mergeList(base && base.cards, local.cards, remote.cards, true);
+  const ids = new Set(cards.v.map(c => c.id));
+  const edges = mergeList(base && base.edges, local.edges, remote.edges, false);
+  const strokes = mergeList(base && base.strokes, local.strokes, remote.strokes, false);
+  const columns = mergeList(base && base.columns, local.columns, remote.columns, true);
+  const name = same(local.name, base && base.name) ? remote.name : local.name;
+  const merged = sanitizeBoard({ ...remote, ...local, name, cards: cards.v, edges: edges.v.filter(e => ids.has(e.from) && ids.has(e.to)), strokes: strokes.v, columns: columns.v,
+    updatedAt: Math.max(+local.updatedAt || 0, +remote.updatedAt || 0) });
+  return { board: merged, conflicts: cards.c + columns.c + (!same(local.name, remote.name) && !same(local.name, base && base.name) && !same(remote.name, base && base.name) ? 1 : 0) };
+}
+/* Put new content into the open board without disturbing anything being typed. */
+function applyContent(nb){
+  board.name = nb.name; board.cards = nb.cards; board.edges = nb.edges; board.columns = nb.columns; board.strokes = nb.strokes;
+  board.updatedAt = nb.updatedAt; board.by = nb.by;
+  if (document.activeElement !== $("#boardName")) $("#boardName").value = board.name;
+  if (editingId && !getCard(editingId)) editingId = null;
+  for (const id of [...selCards]) if (!getCard(id)) selCards.delete(id);
+  undoStack = []; redoStack = []; updUndo();     // undo steps from before can't safely be replayed over other people's changes
+  renderCards(); drawInk(); refreshSel();
+}
+const whoChanged = d => d.by && d.by !== editorName && d.by !== "someone" && d.by !== "migrated" ? d.by + "'s" : "the latest";
+
 /* ---------- saving ---------- */
 function setStatus(s, text){
   const el = $("#status"); el.dataset.s = s;
@@ -1658,8 +1717,10 @@ function setStatus(s, text){
   el.querySelector("span").textContent = text || ({ saved: savedText, pending: "Saving…", error: "Not saved yet, retrying" }[s]);
 }
 function mirrorLocal(){ if (!OFFLINE) ls.set("fb-backup", boardData); }   // last-resort copy in this browser
+function markUnsaved(id, on){ if (OFFLINE) return; const u = ls.get("fb-unsaved", {}) || {}; if (on) u[id] = true; else delete u[id]; ls.set("fb-unsaved", u); }
 function markDirty(){
   if (!board || stopped) return;
+  if (!dirty) markUnsaved(boardId, true);
   board.updatedAt = Date.now(); dirty = true; changeSeq++;
   boardData[boardId] = sanitizeBoard(serialize(board)); mirrorLocal();
   setStatus("pending");
@@ -1678,17 +1739,32 @@ async function doSave(){
   const text = JSON.stringify(payload, null, 2) + "\n";
   const msg = `Save “${payload.name}”${who()}`;
   try {
-    let sha;
+    let sha, saved = payload, merged = null;
     try { sha = await writeFile(`boards/${id}.json`, text, shas[id], msg); }
     catch (e) {
       if (e.status !== 409 && e.status !== 422) throw e;
-      // Someone else saved this board since we loaded it. Their version stays in the history; ours goes on top.
-      const cur = await readFile(`boards/${id}.json`);
-      if (cur && shas[id]) toast("Someone else also changed this board. Their version is kept in History.");
-      sha = await writeFile(`boards/${id}.json`, text, cur ? cur.sha : undefined, msg);
+      // Someone else saved this board since we last looked: merge their changes with ours, then save the result.
+      for (let attempt = 0; attempt < 3; attempt++){
+        const cur = await readFile(`boards/${id}.json`);
+        if (!cur){ sha = await writeFile(`boards/${id}.json`, text, undefined, msg); break; }
+        const remote = sanitizeBoard(JSON.parse(cur.text));
+        merged = mergeBoards(baseData[id], payload, remote);
+        saved = { ...serialize(merged.board), updatedAt: Date.now() };
+        try { sha = await writeFile(`boards/${id}.json`, JSON.stringify(saved, null, 2) + "\n", cur.sha, `${msg} (merged with ${remote.by || "another"} edit)`); break; }
+        catch (e2){ if ((e2.status !== 409 && e2.status !== 422) || attempt === 2) throw e2; }
+      }
     }
     shas[id] = sha; delete etags[id];
-    if (seq === changeSeq && id === boardId){ dirty = false; setStatus("saved"); }
+    setBase(id, saved);
+    boardData[id] = sanitizeBoard(saved);
+    if (merged && id === boardId){
+      // Show the merged board. Anything typed while saving is merged on top and saved next.
+      const now = seq === changeSeq ? merged.board : mergeBoards(payload, serialize(board), merged.board).board;
+      applyContent(now);
+      toast(merged.conflicts ? `Merged with ${whoChanged(merged.board)} changes. Where you both changed the same text, yours was kept; theirs is in History.` : `Merged with ${whoChanged(merged.board)} changes.`);
+    }
+    if (seq === changeSeq && id === boardId){ dirty = false; markUnsaved(id, false); setStatus("saved"); }
+    else if (id !== boardId) markUnsaved(id, false);
     if (!$("#drawer").hidden && id === boardId) loadHistorySoon();
   } catch (e) {
     if (e.status === 401){ stopped = true; setStatus("error", "Access key expired"); accessProblem(); return; }
@@ -1761,8 +1837,13 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 window.addEventListener("beforeunload", e => { if (dirty){ mirrorLocal(); flush(); e.preventDefault(); e.returnValue = ""; } });
 
 /* Pick up other people's changes to the open board. Conditional requests don't use up GitHub's rate limit. */
+let polling = false;
 async function poll(){
-  if (OFFLINE || !GH || !boardId || dirty || dragSet.size || editingId || tableBusy() || document.hidden || stopped) return;
+  if (polling || OFFLINE || !GH || !boardId || dragSet.size || organising || document.hidden || stopped) return;
+  polling = true;
+  try { await pollOnce(); } finally { polling = false; }
+}
+async function pollOnce(){
   const id = boardId;
   let r;
   try { r = await gh("GET", `contents/boards/${id}.json?ref=${encodeURIComponent(GH.branch)}`, null, etags[id] ? { "If-None-Match": etags[id] } : {}); }
@@ -1770,15 +1851,24 @@ async function poll(){
   if (r.status === 304 || !r.ok) return;
   etags[id] = r.headers.get("ETag");
   const j = await r.json();
-  if (j.sha === shas[id] || id !== boardId || dirty || dragSet.size || editingId || tableBusy()) return;
-  try {
-    const data = sanitizeBoard(JSON.parse(await contentOf(j)));
-    shas[id] = j.sha; boardData[id] = data; board = clone(data);
-    $("#boardName").value = board.name; renderCards(); mirrorLocal();
-    toast(`Updated with ${data.by && data.by !== editorName ? data.by + "'s" : "the latest"} changes.`);
-  } catch {}
+  if (j.sha === shas[id] || id !== boardId || dragSet.size || organising) return;
+  let remote;
+  try { remote = sanitizeBoard(JSON.parse(await contentOf(j))); } catch { return; }
+  if (id !== boardId || dragSet.size || organising) return;
+  const base = baseData[id];
+  shas[id] = j.sha; setBase(id, remote);
+  if (!dirty){ boardData[id] = remote; applyContent(clone(remote)); }
+  else {
+    // You have changes that aren't saved yet: merge theirs in now; yours save on top in a moment.
+    const m = mergeBoards(base, serialize(board), remote);
+    applyContent(m.board);
+    boardData[id] = sanitizeBoard(serialize(board));
+    flushSoon();
+  }
+  mirrorLocal();
+  toast(`Updated with ${whoChanged(remote)} changes.`);
 }
-setInterval(poll, 20000);
+setInterval(poll, 5000);
 window.addEventListener("focus", poll);
 
 /* ---------- boards ---------- */
@@ -1800,7 +1890,7 @@ async function loadAllBoards(){
     if (id === boardId && dirty) return;
     const file = await readFile("boards/" + f.name);
     if (!file) return;
-    try { boardData[id] = sanitizeBoard(JSON.parse(file.text)); shas[id] = file.sha; } catch {}
+    try { boardData[id] = sanitizeBoard(JSON.parse(file.text)); shas[id] = file.sha; if (!(ls.get("fb-unsaved", {}) || {})[id]) setBase(id, boardData[id]); } catch {}
   }));
   for (const id of Object.keys(boardData)) if (!live.has(id) && id !== boardId) delete boardData[id];
   mirrorLocal();
@@ -3019,13 +3109,15 @@ async function start(){
     for (const id of Object.keys(local || {})) if (SAFE_ID.test(id)) boardData[id] = sanitizeBoard(local[id]);
     showBanner("GitHub can't be reached right now. Showing the copy kept in this browser; changes will save when it's back.");
   }
-  const pending = Object.keys(local || {}).filter(id => SAFE_ID.test(id) && boardData[id] && (+local[id].updatedAt || 0) > (boardData[id].updatedAt || 0));
+  const unsaved = ls.get("fb-unsaved", {}) || {};
   const want = location.hash.slice(1);
   if (boardData[want]) await openBoard(want); else { setStatus("saved", ""); showEmpty(); return; }
-  if (pending.includes(boardId)){
-    board = sanitizeBoard(local[boardId]); renderCards(); markDirty();
-    toast("Saving changes from your last visit that hadn't reached GitHub.");
-  }
+  if (unsaved[boardId] && local[boardId] && boardData[boardId] && !same(sanitizeBoard(local[boardId]).cards, boardData[boardId].cards)){
+    // Changes from your last visit never reached GitHub: merge them with whatever others have saved since.
+    const m = mergeBoards(baseData[boardId], sanitizeBoard(local[boardId]), boardData[boardId]);
+    applyContent(m.board); markDirty();
+    toast("Saving changes from your last visit that hadn't reached GitHub (merged with anything others changed since).");
+  } else if (unsaved[boardId]) markUnsaved(boardId, false);
 }
 
 async function startOffline(){

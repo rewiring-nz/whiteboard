@@ -34,7 +34,11 @@ Board content is **not** in this repo. It lives in the private repo [`rewiring-n
 - `versions/<id>/…json`: named versions saved from the History panel.
 - `assets/…`: pictures pasted onto boards.
 
-Each browser also keeps a last-resort copy of the boards it has opened, and changes that never reached GitHub are saved on the next visit.
+Each browser also keeps a last-resort copy of the boards it has opened, and changes that never reached GitHub are merged in and saved on the next visit.
+
+### Several people on one board
+
+Open boards check for other people's changes every 5 seconds (free against GitHub's limits). When edits cross, they're merged card by card and field by field against the last version each person had, so both people's work is kept. Only when two people change the same field of the same card at the same time does the newest edit win; the other stays in the history. A deleted item stays deleted unless someone edited it meanwhile, in which case it's kept. Undo history resets when other people's changes arrive, so an undo can't wipe out their work.
 
 Because the code and the data are in separate repos, changing or redeploying the app never touches board content.
 
