@@ -99,6 +99,12 @@ body.offline .lock{display:none}
   background-image:radial-gradient(circle, var(--dot) 1.2px, transparent 1.4px); background-size:24px 24px;
   padding-block:28px 48px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px))}
 .pk-inner{max-width:1040px; margin:0 auto}
+body.picking .bar{display:none}
+.pk-top{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:26px}
+.pk-brand{cursor:default; font-size:17px}
+.pk-links{display:flex; gap:4px}
+.pk-links .btn{color:var(--muted)}
+body.offline #pkSignOut{display:none}
 .pk-head{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:18px}
 .pk-head h2{font-family:var(--f-display); font-weight:650; font-size:26px; letter-spacing:-.01em; margin:0; flex:1 1 auto}
 .pk-head input{height:36px; border:1px solid var(--line); border-radius:8px; padding:0 10px; font:14px var(--f-body); color:var(--ink); background:var(--surface); width:min(260px, 100%)}
@@ -269,6 +275,8 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 #vp{-webkit-user-select:none; user-select:none; -webkit-touch-callout:none; position:relative; flex:1; min-width:0; overflow:hidden; touch-action:none; cursor:default;
   background-image:radial-gradient(circle, var(--dot) 1.2px, transparent 1.4px); background-size:24px 24px}
 #vp.panning{cursor:grabbing}
+#vp.space-pan{cursor:grab}
+#selBox{position:absolute; z-index:9; pointer-events:none; border:1px solid var(--accent); background:color-mix(in srgb, var(--accent) 10%, transparent); border-radius:2px}
 #vp.linking, #vp.linking .card-head{cursor:crosshair}
 #vp .body, #vp .edit{-webkit-user-select:text; user-select:text}
 #world{position:absolute; left:0; top:0; transform-origin:0 0}
@@ -463,6 +471,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     </div>
     <div class="sep board-only"></div>
     <div class="grp board-only">
+      <button class="btn" id="organiseBtn" title="Tidy the board into neat columns (undo puts it back)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="3" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="7" width="5" height="7" rx="1"/></svg>Organise</button>
       <button class="btn" id="expandAll" title="Expand every card">Expand all</button>
       <button class="btn" id="collapseAll" title="Collapse every card">Collapse all</button>
     </div>
@@ -501,6 +510,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     </svg>
     <button id="edgeDel" hidden>Remove link</button>
   </div>
+  <div id="selBox" hidden></div>
   <div id="inkCatch" hidden></div>
   <div class="inkbar" id="inkBar" hidden role="toolbar" aria-label="Marker">
     <button class="ic" data-ink="ink" title="Black" aria-label="Black" style="color:var(--m-ink)"><i style="width:14px;height:14px"></i></button>
@@ -518,7 +528,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <button class="btn primary" id="inkDone">Done</button>
   </div>
   <div class="plegend" id="plegend" hidden aria-label="Priority colours, 1 is highest">Priority <span>1 = highest</span><i style="--pc:var(--p1)">1</i><i style="--pc:var(--p2)">2</i><i style="--pc:var(--p3)">3</i><i style="--pc:var(--p4)">4</i><i style="--pc:var(--p5)">5</i><i style="--pc:var(--p6)">6</i><i style="--pc:var(--p7)">7</i><i style="--pc:var(--p8)">8</i><i style="--pc:var(--p9)">9</i><i style="--pc:var(--p10)">10</i></div>
-  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Scroll or drag to pan, <b>pinch</b> or <b>Ctrl/⌘ + scroll</b> to zoom · <b>Apple Pencil</b> draws · <b>Paste</b> pictures, links or text · <b>⌘C / ⌘V</b> copies cards</div>
+  <div class="help" id="help"><b>Click</b> a card to unfold it · <b>Drag</b> its header to move · <b>Double-click</b> the board to add a card · Drag on the board to select, <b>Shift</b>-click to add · Scroll or Space-drag to pan, <b>pinch</b> or <b>Ctrl/⌘ + scroll</b> to zoom · <b>Apple Pencil</b> draws · <b>Paste</b> pictures, links or text · <b>⌘C / ⌘V</b> copies cards</div>
   <div class="empty-state" id="emptyState" hidden>
     <div class="empty-card">
       <h2>No boards yet</h2>
@@ -541,6 +551,10 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
   </section>
   <section class="picker" id="picker" hidden aria-label="Choose a board">
     <div class="pk-inner">
+      <div class="pk-top">
+        <div class="brand pk-brand"><i aria-hidden="true"></i>Whiteboard</div>
+        <div class="pk-links"><button class="btn" id="pkImport">Import boards…</button><button class="btn" id="pkSignOut">Sign out</button></div>
+      </div>
       <div class="pk-head">
         <h2>Choose a board</h2>
         <input type="search" id="pkSearch" placeholder="Find a board" aria-label="Find a board">
@@ -634,7 +648,7 @@ let editingId = null, editUndoPushed = false;
 let linkMode = false, linkFrom = null;
 let undoStack = [], redoStack = [];
 let dirty = false, changeSeq = 0, saveTimer = null, firstDirtyAt = 0, writeChain = Promise.resolve(), stopped = false;
-let dragId = null;
+let dragSet = new Set();   // cards being dragged right now
 
 const vp = $("#vp"), world = $("#world"), edgeG = $("#edgeG"), edgeDel = $("#edgeDel");
 const els = new Map();
@@ -884,7 +898,7 @@ function labelOf(c){
 }
 function updateObjEl(el, c){
   el.className = `card obj k-${c.kind}` + (c.kind === "link" ? " d-" + c.disp : "") +
-    (selected && selected.type === "card" && selected.id === c.id ? " sel" : "") + (dragId === c.id ? " dragging" : "") + (linkFrom === c.id ? " link-src" : "");
+    (selCards.has(c.id) ? " sel" : "") + (dragSet.has(c.id) ? " dragging" : "") + (linkFrom === c.id ? " link-src" : "");
   el.style.width = (c.kind === "link" && c.disp === "pill") ? "" : c.w + "px";
   const key = JSON.stringify([c.kind, c.asset, c.url, c.disp, c.meta, c.emoji, c.kind === "emoji" ? c.w : 0]);
   if (el._key === key) return;
@@ -958,7 +972,7 @@ function updateCardEl(el, c){
   const editing = editingId === c.id;
   if (c.color.startsWith("#")) el.style.setProperty("--custom", c.color); else el.style.removeProperty("--custom");
   el.className = `card ${tintClass(c)}` + ((c.open || editing) ? " open" : "") + (editing ? " editing" : "") +
-    (selected && selected.type === "card" && selected.id === c.id ? " sel" : "") + (dragId === c.id ? " dragging" : "") +
+    (selCards.has(c.id) ? " sel" : "") + (dragSet.has(c.id) ? " dragging" : "") +
     (linkFrom === c.id ? " link-src" : "") + (!c.body.trim() ? " empty-body" : "");
   el.style.width = c.w + "px";
   if (!el._title.isContentEditable && el._title.textContent !== (c.title || "Untitled")) el._title.textContent = c.title || "Untitled";
@@ -1116,26 +1130,39 @@ function clearCards(){ for (const [, el] of els){ ro.unobserve(el); el.remove();
    Emoji stickers float freely so they can sit on top of cards. */
 let layoutQueued = false;
 function scheduleLayout(){ if (!layoutQueued){ layoutQueued = true; requestAnimationFrame(layout); } }
-function layout(){
-  layoutQueued = false;
-  if (!board) return;
-  const items = board.cards.map(c => { const el = els.get(c.id); return el && { c, el, h: el.offsetHeight, ch: el._kind === "link" ? Math.min(el.offsetHeight, 32) : el._kind ? el.offsetHeight : el._head.offsetHeight + 2, w: el.offsetWidth }; }).filter(Boolean);
-  items.sort((a, b) => a.c.y - b.c.y || (a.c.x - b.c.x) || (a.c.id < b.c.id ? -1 : 1));
-  const placed = [];
+function measureItem(c, el){
+  return { id: c.id, kind: c.kind, x: c.x, y: c.y, w: el.offsetWidth, h: el.offsetHeight,
+    ch: el._kind === "link" ? Math.min(el.offsetHeight, 32) : el._kind ? el.offsetHeight : el._head.offsetHeight + 2 };
+}
+// Given each card's resting (folded) position and its current height, where it shows on screen.
+function computeRender(items, dragging){
+  items = items.slice().sort((a, b) => a.y - b.y || (a.x - b.x) || (a.id < b.id ? -1 : 1));
+  const out = new Map(), placed = [];
   for (const it of items){
-    let y = it.c.y;
-    if (dragId !== it.c.id && it.c.kind !== "emoji"){
+    let y = it.y;
+    if (!dragging.has(it.id) && it.kind !== "emoji"){
       for (const p of placed){
-        if (p.c.kind === "emoji" || p.c.id === dragId) continue;
-        if (p.c.x < it.c.x + it.w - 2 && it.c.x < p.c.x + p.w - 2 && it.c.y - p.c.y > 24){
-          const gap = it.c.y - (p.c.y + p.ch);
+        if (p.kind === "emoji" || dragging.has(p.id)) continue;
+        if (p.x < it.x + it.w - 2 && it.x < p.x + p.w - 2 && it.y - p.y > 24){
+          const gap = it.y - (p.y + p.ch);
           y = Math.max(y, p.ry + p.h + Math.max(gap, 10));
         }
       }
     }
-    it.ry = y; placed.push(it);
-    renderPos.set(it.c.id, { x: it.c.x, y, w: it.w, h: it.h });
-    it.el.style.transform = `translate(${it.c.x}px, ${y}px)`;
+    it.ry = y; placed.push(it); out.set(it.id, y);
+  }
+  return out;
+}
+function layout(){
+  layoutQueued = false;
+  if (organising) return;   // the organise animation is placing cards itself
+  if (!board) return;
+  const items = board.cards.map(c => { const el = els.get(c.id); return el && measureItem(c, el); }).filter(Boolean);
+  const ry = computeRender(items, dragSet);
+  for (const it of items){
+    const y = ry.get(it.id), el = els.get(it.id);
+    renderPos.set(it.id, { x: it.x, y, w: it.w, h: it.h });
+    el.style.transform = `translate(${it.x}px, ${y}px)`;
   }
   drawEdges();
 }
@@ -1154,10 +1181,10 @@ function drawEdges(){
     if (!a || !b) continue;
     const dx = (b.x + b.w / 2) - (a.x + a.w / 2), dy = (b.y + b.h / 2) - (a.y + a.h / 2);
     const [x1, y1] = boundaryPoint(a, dx, dy), [x2, y2] = boundaryPoint(b, -dx, -dy);
-    const sel = selected && selected.type === "edge" && selected.id === e.id;
+    const sel = edgeSelected(e);
     const d = `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`;
     html += `<path class="e${sel ? " sel" : ""}" d="${d}" marker-end="url(#${sel ? "arrSel" : "arr"})"/><path class="hit" data-id="${e.id}" d="${d}"/>`;
-    if (sel) delPos = [(x1 + x2) / 2, (y1 + y2) / 2];
+    if (sel && selected && selected.type === "edge") delPos = [(x1 + x2) / 2, (y1 + y2) / 2];
   }
   edgeG.innerHTML = html;
   if (delPos){ edgeDel.hidden = false; edgeDel.style.left = delPos[0] + "px"; edgeDel.style.top = delPos[1] + "px"; }
@@ -1177,11 +1204,69 @@ function addEdge(from, to){
 }
 function deleteEdge(id){ pushUndo(); board.edges = board.edges.filter(e => e.id !== id); selected = null; markDirty(); drawEdges(); }
 
-/* ---------- selection, link mode ---------- */
-function select(s){
-  selected = s;
-  for (const [id, el] of els) el.classList.toggle("sel", !!(s && s.type === "card" && s.id === id));
+/* ---------- selection, link mode ----------
+   Several cards and drawings can be selected at once (Shift-click, or drag a box on empty board).
+   A connector counts as selected when the cards at both ends are. */
+const selCards = new Set(), selInks = new Set();
+const selSize = () => selCards.size + selInks.size;
+function refreshSel(){
+  if (!selected || (selected.type === "card" && !selCards.has(selected.id)) || (selected.type === "ink" && !selInks.has(selected.id)))
+    if (!(selected && selected.type === "edge")) selected = selCards.size ? { type: "card", id: [...selCards].pop() } : selInks.size ? { type: "ink", id: [...selInks].pop() } : null;
+  for (const [id, el] of els) el.classList.toggle("sel", selCards.has(id));
   drawEdges(); drawInkSel();
+}
+function select(s, how){
+  if (how !== "toggle"){ selCards.clear(); selInks.clear(); }
+  if (s && (s.type === "card" || s.type === "ink")){
+    const set = s.type === "card" ? selCards : selInks;
+    if (how === "toggle" && set.has(s.id)){ set.delete(s.id); s = null; } else set.add(s.id);
+  }
+  selected = s && s.type === "edge" ? s : (s || null);
+  refreshSel();
+}
+function selectMany(cards, inks){
+  selCards.clear(); selInks.clear();
+  cards.forEach(id => selCards.add(id)); inks.forEach(g => selInks.add(g));
+  selected = null; refreshSel();
+}
+const edgeSelected = e => (selected && selected.type === "edge" && selected.id === e.id) || (selCards.size > 1 && selCards.has(e.from) && selCards.has(e.to));
+/* Drag everything selected together. */
+function startGroupDrag(e, el, onClick){
+  const sx = e.clientX, sy = e.clientY; let moved = false;
+  const start = [...selCards].map(getCard).filter(Boolean).map(c => ({ c, x: c.x, y: renderPos.get(c.id)?.y ?? c.y }));
+  const inks = board.strokes.filter(k => selInks.has(gkey(k))), orig = inks.map(k => k.p.slice());
+  try { el.setPointerCapture(e.pointerId); } catch {}
+  const move = ev => {
+    if (!moved){
+      if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return;
+      moved = true; pushUndo();
+      dragSet = new Set(start.map(s => s.c.id));
+      start.forEach(s => { s.c.y = s.y; });
+      renderCards();
+    }
+    const dx = (ev.clientX - sx) / view.s, dy = (ev.clientY - sy) / view.s;
+    start.forEach(s => { s.c.x = Math.round(s.x + dx); s.c.y = Math.round(s.y + dy); });
+    inks.forEach((k, i) => { k.p = orig[i].map((v, j) => +(v + (j % 2 ? dy : dx)).toFixed(1)); });
+    scheduleLayout(); if (inks.length) drawInk();
+  };
+  const up = () => {
+    el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up);
+    if (moved){ dragSet = new Set(); renderCards(); markDirty(); } else if (onClick) onClick();
+  };
+  el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+}
+function deleteSelection(){
+  if (!board || !selSize()) return;
+  pushUndo();
+  const nC = selCards.size, nI = selInks.size;
+  board.cards = board.cards.filter(c => !selCards.has(c.id));
+  board.edges = board.edges.filter(e => !selCards.has(e.from) && !selCards.has(e.to));
+  board.strokes = board.strokes.filter(k => !selInks.has(gkey(k)));
+  if (editingId && selCards.has(editingId)) editingId = null;
+  selCards.clear(); selInks.clear(); selected = null;
+  markDirty(); renderCards(); drawInk();
+  const parts = [nC ? `${nC} item${nC > 1 ? "s" : ""}` : "", nI ? `${nI} drawing${nI > 1 ? "s" : ""}` : ""].filter(Boolean).join(" and ");
+  toast(`Deleted ${parts}. Undo with Cmd/Ctrl + Z.`);
 }
 function setLinkMode(on, from = null){
   linkMode = on; linkFrom = on ? from : null;
@@ -1204,15 +1289,17 @@ function wireCard(el, id){
     e.stopPropagation();
     if (linkMode){ e.preventDefault(); handleLinkClick(id); return; }
     const c = getCard(id); if (!c) return;
-    const wasSel = !!(selected && selected.type === "card" && selected.id === id);
-    select({ type: "card", id });
+    if (e.shiftKey){ select({ type: "card", id }, "toggle"); return; }
+    const wasSel = selCards.has(id) && selSize() === 1;
+    if (!selCards.has(id)) select({ type: "card", id });
+    if (selSize() > 1){ startGroupDrag(e, head, () => select({ type: "card", id })); return; }
     const rp = renderPos.get(id);
     const st = { px: e.clientX, py: e.clientY, x: c.x, y: rp ? rp.y : c.y, moved: false, wasSel };
     head.setPointerCapture(e.pointerId);
     const move = ev => {
       if (!st.moved){
         if (Math.hypot(ev.clientX - st.px, ev.clientY - st.py) < 4) return;
-        st.moved = true; pushUndo(); dragId = id;
+        st.moved = true; pushUndo(); dragSet = new Set([id]);
         board.cards = board.cards.filter(k => k !== c).concat(c);
         c.y = st.y; renderCards();
       }
@@ -1222,7 +1309,7 @@ function wireCard(el, id){
     };
     const up = () => {
       head.removeEventListener("pointermove", move); head.removeEventListener("pointerup", up); head.removeEventListener("pointercancel", up);
-      if (st.moved){ dragId = null; renderCards(); markDirty(); }
+      if (st.moved){ dragSet = new Set(); renderCards(); markDirty(); }
       else if (c.kind === "link"){ if (st.wasSel || e.pointerType !== "touch") openLink(c.url); }   // on touch: first tap selects, second opens
       else if (c.kind === "card" && editingId !== id){
         const t = e.target.closest(".title,.summary");
@@ -1396,7 +1483,7 @@ function applyView(){
   vp.style.backgroundPosition = `${view.x}px ${view.y}px`;
   vp.style.backgroundSize = `${24 * view.s}px ${24 * view.s}px`;
   $("#zoomLabel").textContent = Math.round(view.s * 100) + "%";
-  if (selected && selected.type === "ink") drawInkSel();
+  if (selInks.size) drawInkSel();
   clearTimeout(applyView.t);
   applyView.t = setTimeout(() => { if (boardId) ls.set("fb-view-" + boardId, view); }, 400);
 }
@@ -1406,16 +1493,38 @@ function zoomAt(cx, cy, f){
   view.x = px - (px - view.x) * (ns / view.s); view.y = py - (py - view.y) * (ns / view.s); view.s = ns; applyView();
 }
 function zoomCenter(f){ const r = vp.getBoundingClientRect(); zoomAt(r.left + r.width / 2, r.top + r.height / 2, f); }
-function fitView(){
+function boardBounds(rects){
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const r of rects){ x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h); }
+  for (const k of board.strokes) for (let i = 0; i < k.p.length; i += 2){ x0 = Math.min(x0, k.p[i]); x1 = Math.max(x1, k.p[i]); y0 = Math.min(y0, k.p[i + 1]); y1 = Math.max(y1, k.p[i + 1]); }
+  return isFinite(x0) ? { x0, y0, x1, y1 } : null;
+}
+function fitFor(b){
+  const R = vp.getBoundingClientRect(), pad = 48;
+  const s = clamp(Math.min((R.width - pad * 2) / Math.max(b.x1 - b.x0, 1), (R.height - pad * 2) / Math.max(b.y1 - b.y0, 1)), 0.2, 1.1);
+  return { s, x: (R.width - (b.x1 - b.x0) * s) / 2 - b.x0 * s, y: Math.max(pad / 2, (R.height - (b.y1 - b.y0) * s) / 2 - b.y0 * s) };
+}
+const ease = t => 1 - Math.pow(1 - t, 3);
+const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+let viewAnim = 0;
+function animateView(to, ms = 420){
+  const from = { ...view }, t0 = performance.now(), id = ++viewAnim, D = reduceMotion() ? 0 : ms;
+  const step = now => {
+    if (id !== viewAnim) return;
+    const e = D ? ease(Math.min(1, (now - t0) / D)) : 1;
+    view = { s: from.s + (to.s - from.s) * e, x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e };
+    applyView();
+    if (e < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function fitView(animate){
   if (!board || (!board.cards.length && !board.strokes.length)){ view = { x: 40, y: 30, s: 1 }; applyView(); return; }
   layout();
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const r of renderPos.values()){ x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y); x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h); }
-  for (const k of board.strokes) for (let i = 0; i < k.p.length; i += 2){ x0 = Math.min(x0, k.p[i]); x1 = Math.max(x1, k.p[i]); y0 = Math.min(y0, k.p[i + 1]); y1 = Math.max(y1, k.p[i + 1]); }
-  const R = vp.getBoundingClientRect(), pad = 48;
-  const s = clamp(Math.min((R.width - pad * 2) / (x1 - x0), (R.height - pad * 2) / (y1 - y0)), 0.2, 1.1);
-  view = { s, x: (R.width - (x1 - x0) * s) / 2 - x0 * s, y: Math.max(pad / 2, (R.height - (y1 - y0) * s) / 2 - y0 * s) };
-  applyView();
+  const b = boardBounds([...renderPos.values()]);
+  if (!b) return;
+  const to = fitFor(b);
+  if (animate) animateView(to); else { view = to; applyView(); }
 }
 
 // The board moves only by panning; never let the browser scroll its container (e.g. when a text box takes focus).
@@ -1478,9 +1587,37 @@ vp.addEventListener("pointerdown", e => {
   if (e.button !== 0 && e.button !== 1) return;
   if (linkMode) setLinkMode(false);
   if (editingId) stopEditing();
-  select(null); closeMenu();
+  closeMenu();
+  if (e.pointerType === "mouse" && e.button === 0 && !spaceDown && board){ startBox(e); return; }
+  select(null);
   startPan(e, vp);
 });
+let spaceDown = false;
+document.addEventListener("keydown", e => { if (e.code === "Space" && !(e.target.closest && e.target.closest("input,textarea,[contenteditable],button"))){ e.preventDefault(); if (!spaceDown){ spaceDown = true; vp.classList.add("space-pan"); } } });
+document.addEventListener("keyup", e => { if (e.code === "Space"){ spaceDown = false; vp.classList.remove("space-pan"); } });
+function startBox(e){
+  const box = $("#selBox"), R = vp.getBoundingClientRect(), sx = e.clientX, sy = e.clientY, add = e.shiftKey;
+  const keepC = add ? [...selCards] : [], keepI = add ? [...selInks] : [];
+  let moved = false;
+  try { vp.setPointerCapture(e.pointerId); } catch {}
+  const move = ev => {
+    if (!moved){ if (Math.hypot(ev.clientX - sx, ev.clientY - sy) < 4) return; moved = true; box.hidden = false; }
+    const x0 = Math.min(sx, ev.clientX), y0 = Math.min(sy, ev.clientY), x1 = Math.max(sx, ev.clientX), y1 = Math.max(sy, ev.clientY);
+    Object.assign(box.style, { left: (x0 - R.left) + "px", top: (y0 - R.top) + "px", width: (x1 - x0) + "px", height: (y1 - y0) + "px" });
+    const w = { x0: (x0 - R.left - view.x) / view.s, y0: (y0 - R.top - view.y) / view.s, x1: (x1 - R.left - view.x) / view.s, y1: (y1 - R.top - view.y) / view.s };
+    const hit = r => r.x < w.x1 && r.x + r.w > w.x0 && r.y < w.y1 && r.y + r.h > w.y0;
+    const cards = [...renderPos].filter(([id, r]) => getCard(id) && hit(r)).map(([id]) => id);
+    const inks = [...new Set(board.strokes.map(gkey))].filter(g => { const b = groupBox(g); return b && hit(b); });
+    selectMany([...new Set([...keepC, ...cards])], [...new Set([...keepI, ...inks])]);
+  };
+  const up = () => {
+    vp.removeEventListener("pointermove", move); vp.removeEventListener("pointerup", up); vp.removeEventListener("pointercancel", up);
+    box.hidden = true;
+    if (!moved && !add) select(null);
+    else if (moved && selSize() > 1) toast(`${selSize()} selected. Drag any of them to move them together.`);
+  };
+  vp.addEventListener("pointermove", move); vp.addEventListener("pointerup", up); vp.addEventListener("pointercancel", up);
+}
 vp.addEventListener("dblclick", e => {
   if (inkMode || e.target.closest(".card,.drawer,.banner,.empty-state,#edgeDel,.help,.inkbar,.plegend") || !board) return;
   const r = vp.getBoundingClientRect();
@@ -1598,7 +1735,7 @@ window.addEventListener("beforeunload", e => { if (dirty){ mirrorLocal(); flush(
 
 /* Pick up other people's changes to the open board. Conditional requests don't use up GitHub's rate limit. */
 async function poll(){
-  if (OFFLINE || !GH || !boardId || dirty || dragId || editingId || tableBusy() || document.hidden || stopped) return;
+  if (OFFLINE || !GH || !boardId || dirty || dragSet.size || editingId || tableBusy() || document.hidden || stopped) return;
   const id = boardId;
   let r;
   try { r = await gh("GET", `contents/boards/${id}.json?ref=${encodeURIComponent(GH.branch)}`, null, etags[id] ? { "If-None-Match": etags[id] } : {}); }
@@ -1606,7 +1743,7 @@ async function poll(){
   if (r.status === 304 || !r.ok) return;
   etags[id] = r.headers.get("ETag");
   const j = await r.json();
-  if (j.sha === shas[id] || id !== boardId || dirty || dragId || editingId || tableBusy()) return;
+  if (j.sha === shas[id] || id !== boardId || dirty || dragSet.size || editingId || tableBusy()) return;
   try {
     const data = sanitizeBoard(JSON.parse(await contentOf(j)));
     shas[id] = j.sha; boardData[id] = data; board = clone(data);
@@ -2037,11 +2174,15 @@ function groupBox(g){
 }
 function drawInkSel(){
   const sg = $("#inkSel");
-  const b = board && selected && selected.type === "ink" ? groupBox(selected.id) : null;
-  if (!b){ sg.innerHTML = ""; return; }
-  const pad = 6 / view.s, r = 7 / view.s;
-  sg.innerHTML = `<rect class="ink-box" x="${b.x - pad}" y="${b.y - pad}" width="${b.w + pad * 2}" height="${b.h + pad * 2}" style="stroke-width:${1.5 / view.s};stroke-dasharray:${5 / view.s} ${4 / view.s}"/>` +
-    `<circle class="ink-handle" cx="${b.x + b.w + pad}" cy="${b.y + b.h + pad}" r="${r}" style="stroke-width:${2 / view.s}"/>`;
+  if (!board || !selInks.size){ sg.innerHTML = ""; return; }
+  const pad = 6 / view.s, r = 7 / view.s, one = selInks.size === 1 && !selCards.size;
+  let html = "";
+  for (const g of selInks){
+    const b = groupBox(g); if (!b) continue;
+    html += `<rect class="ink-box" x="${b.x - pad}" y="${b.y - pad}" width="${b.w + pad * 2}" height="${b.h + pad * 2}" style="stroke-width:${1.5 / view.s};stroke-dasharray:${5 / view.s} ${4 / view.s}"/>`;
+    if (one) html += `<circle class="ink-handle" cx="${b.x + b.w + pad}" cy="${b.y + b.h + pad}" r="${r}" style="stroke-width:${2 / view.s}"/>`;
+  }
+  sg.innerHTML = html;
 }
 function inkGroupPointer(e, g, scaling){
   e.stopPropagation(); e.preventDefault();
@@ -2066,9 +2207,15 @@ function inkGroupPointer(e, g, scaling){
   const up = () => { t.removeEventListener("pointermove", move); t.removeEventListener("pointerup", up); t.removeEventListener("pointercancel", up); if (moved) markDirty(); };
   t.addEventListener("pointermove", move); t.addEventListener("pointerup", up); t.addEventListener("pointercancel", up);
 }
-inkG.addEventListener("pointerdown", e => { const h = e.target.closest(".ink-hit"); if (h && e.button === 0) inkGroupPointer(e, h.dataset.g, false); });
+inkG.addEventListener("pointerdown", e => {
+  const h = e.target.closest(".ink-hit"); if (!h || e.button !== 0) return;
+  const g = h.dataset.g;
+  if (e.shiftKey){ e.stopPropagation(); select({ type: "ink", id: g }, "toggle"); return; }
+  if (selSize() > 1 && selInks.has(g)){ e.stopPropagation(); e.preventDefault(); startGroupDrag(e, h, () => select({ type: "ink", id: g })); return; }
+  inkGroupPointer(e, g, false);
+});
 $("#inkSel").addEventListener("pointerdown", e => { if (e.target.closest(".ink-handle") && selected && selected.type === "ink") inkGroupPointer(e, selected.id, true); });
-function deleteInkGroup(g){ pushUndo(); board.strokes = board.strokes.filter(k => gkey(k) !== g); selected = null; drawInk(); markDirty(); }
+function deleteInkGroup(g){ pushUndo(); board.strokes = board.strokes.filter(k => gkey(k) !== g); selInks.delete(g); selected = null; drawInk(); markDirty(); }
 let lastStrokeEnd = 0, lastGroup = null;
 function strokeHit(k, x, y, r){
   const rr = r + k.w / 2, p = k.p;
@@ -2434,10 +2581,11 @@ const isUrl = t => /^https?:\/\/\S+$/i.test(t);
 const CLIP_TYPE = "application/x-whiteboard+json";
 let clip = null, clipPastes = 0;
 function selectionClip(){
-  if (!board || !selected) return null;
-  if (selected.type === "card"){ const c = getCard(selected.id); return c ? { v: 1, cards: [clone(c)], strokes: [] } : null; }
-  if (selected.type === "ink"){ const st = board.strokes.filter(k => gkey(k) === selected.id); return st.length ? { v: 1, cards: [], strokes: clone(st) } : null; }
-  return null;
+  if (!board || !selSize()) return null;
+  const cards = board.cards.filter(c => selCards.has(c.id));
+  const strokes = board.strokes.filter(k => selInks.has(gkey(k)));
+  const edges = board.edges.filter(e => selCards.has(e.from) && selCards.has(e.to));
+  return (cards.length || strokes.length) ? { v: 1, cards: clone(cards), strokes: clone(strokes), edges: clone(edges) } : null;
 }
 function clipText(d){
   return d.cards.map(c => c.kind === "link" ? c.url : c.kind === "card" ? [c.title, c.summary, c.body].filter(Boolean).join("\n") : labelOf(c)).join("\n\n") || "Drawing";
@@ -2450,8 +2598,9 @@ function onCopy(e, cut){
   e.preventDefault();
   clip = d; clipPastes = 0;
   try { e.clipboardData.setData("text/plain", clipText(d)); e.clipboardData.setData(CLIP_TYPE, JSON.stringify(d)); } catch {}
-  if (cut){ if (selected.type === "card") deleteCard(selected.id); else deleteInkGroup(selected.id); toast("Cut. Paste with Cmd/Ctrl + V."); }
-  else toast(d.cards.length ? "Copied card." : "Copied drawing.");
+  const n = d.cards.length + new Set(d.strokes.map(gkey)).size;
+  if (cut){ deleteSelection(); toast(`Cut ${n > 1 ? n + " items" : "1 item"}. Paste with Cmd/Ctrl + V.`); }
+  else toast(n > 1 ? `Copied ${n} items.` : d.cards.length ? "Copied card." : "Copied drawing.");
 }
 document.addEventListener("copy", e => onCopy(e, false));
 document.addEventListener("cut", e => onCopy(e, true));
@@ -2467,13 +2616,15 @@ function pasteClip(d){
     if (lastPtr.x > R.left && lastPtr.y > R.top){ const p = dropPoint(); dx = p.x - Math.min(...xs) - 20; dy = p.y - Math.min(...ys) - 10; }
   }
   pushUndo();
-  const fresh = sanitizeBoard({ cards: d.cards.map(c => ({ ...c, id: uid(), x: c.x + dx, y: c.y + dy })), strokes: [] }).cards;
+  const idMap = new Map(d.cards.map(c => [c.id, uid()]));
+  const fresh = sanitizeBoard({ cards: d.cards.map(c => ({ ...c, id: idMap.get(c.id), x: c.x + dx, y: c.y + dy })), strokes: [] }).cards;
   board.cards.push(...fresh);
-  const g = uid();
-  const st = sanitizeBoard({ strokes: d.strokes.map(k => ({ ...k, id: uid(), g, p: k.p.map((v, i) => v + (i % 2 ? dy : dx)) })) }).strokes;
+  for (const e of (d.edges || [])) if (idMap.has(e.from) && idMap.has(e.to)) board.edges.push({ id: uid(), from: idMap.get(e.from), to: idMap.get(e.to) });
+  const gMap = new Map();
+  const st = sanitizeBoard({ strokes: d.strokes.map(k => { const old = gkey(k); if (!gMap.has(old)) gMap.set(old, uid()); return { ...k, id: uid(), g: gMap.get(old), p: k.p.map((v, i) => v + (i % 2 ? dy : dx)) }; }) }).strokes;
   board.strokes.push(...st);
-  markDirty(); renderCards();
-  if (fresh.length) select({ type: "card", id: fresh[fresh.length - 1].id }); else if (st.length) select({ type: "ink", id: g });
+  markDirty(); renderCards(); drawInk();
+  selectMany(fresh.map(c => c.id), [...gMap.values()]);
 }
 document.addEventListener("paste", e => {
   if (!board || mode !== "board" || !picker.hidden || !GH && !OFFLINE) return;
@@ -2481,7 +2632,7 @@ document.addEventListener("paste", e => {
   let wb = null;
   try { const raw = e.clipboardData && e.clipboardData.getData(CLIP_TYPE); if (raw) wb = JSON.parse(raw); } catch {}
   if (!wb && clip && (e.clipboardData && e.clipboardData.getData("text/plain")) === clipText(clip)) wb = clip;
-  if (wb && (Array.isArray(wb.cards) || Array.isArray(wb.strokes))){ e.preventDefault(); pasteClip({ cards: wb.cards || [], strokes: wb.strokes || [] }); return; }
+  if (wb && (Array.isArray(wb.cards) || Array.isArray(wb.strokes))){ e.preventDefault(); pasteClip({ cards: wb.cards || [], strokes: wb.strokes || [], edges: Array.isArray(wb.edges) ? wb.edges : [] }); return; }
   const items = [...((e.clipboardData && e.clipboardData.items) || [])];
   const fileItem = items.find(i => i.kind === "file" && i.type.startsWith("image/"));
   if (fileItem){ e.preventDefault(); addImageFile(fileItem.getAsFile()); return; }
@@ -2528,6 +2679,118 @@ emojiBtn.addEventListener("click", () => {
   });
 });
 
+/* ---------- organise ----------
+   Cards stay where you put them until you press Organise. Organise keeps the columns you've roughly made
+   (cards are grouped by where they sit left to right), lines each column up with even gaps, and glides
+   everything there, zooming to fit. Emoji and drawings sitting on a card travel with it. Undo puts it back. */
+let organising = false;
+function foldedHeight(c){
+  const el = els.get(c.id); if (!el) return 60;
+  return el._kind === "link" ? Math.min(el.offsetHeight, 32) : el._kind ? el.offsetHeight : el._head.offsetHeight + 2;
+}
+function finalHeight(c){
+  const el = els.get(c.id); if (!el) return 80;
+  if (el._kind) return el.offsetHeight;
+  const inner = el.querySelector(".inner");
+  return el._head.offsetHeight + 2 + ((c.open || editingId === c.id) && inner ? inner.scrollHeight : 0);
+}
+function organiseTargets(cur){
+  const GAP = 24, COLGAP = 44;
+  const items = board.cards.filter(c => c.kind !== "emoji" && cur.has(c.id)).map(c => { const r = cur.get(c.id); return { c, x: r.x, y: r.y, w: r.w, h: finalHeight(c), ch: foldedHeight(c) }; });
+  if (!items.length) return new Map();
+  // group into columns by horizontal position
+  let cols = [];
+  for (const it of items.slice().sort((a, b) => a.x - b.x)){
+    const mid = it.x + it.w / 2;
+    const col = cols.find(k => Math.abs(k.cx - mid) < Math.max(k.w, it.w) * 0.55);
+    if (col){ col.items.push(it); col.cx += (mid - col.cx) / col.items.length; col.w = Math.max(col.w, it.w); }
+    else cols.push({ cx: mid, w: it.w, items: [it] });
+  }
+  cols.sort((a, b) => a.cx - b.cx);
+  cols.forEach(k => k.items.sort((a, b) => a.y - b.y || a.x - b.x));
+  // Scattered boards (lots of one-card columns): balance them into a few columns instead, in reading order.
+  if (cols.length > Math.max(4, Math.ceil(Math.sqrt(items.length) * 1.6))){
+    const R = vp.getBoundingClientRect();
+    const avgW = items.reduce((a, it) => a + it.w, 0) / items.length, avgH = items.reduce((a, it) => a + it.h, 0) / items.length;
+    const k = clamp(Math.round(Math.sqrt(items.length * (R.width / Math.max(R.height, 1)) * (avgH + GAP) / (avgW + COLGAP))), 1, 10);
+    const order = items.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    cols = Array.from({ length: k }, () => ({ items: [], w: 0, h: 0 }));
+    for (const it of order){ const col = cols.reduce((m, c) => c.h < m.h ? c : m); col.items.push(it); col.w = Math.max(col.w, it.w); col.h += it.h + GAP; }
+    cols = cols.filter(c => c.items.length);
+  }
+  const x0 = Math.min(...items.map(it => it.x)), y0 = Math.min(...items.map(it => it.y));
+  const out = new Map(), sim = [];
+  let X = x0;
+  for (const col of cols){
+    let Y = y0;
+    for (const it of col.items){ sim.push({ id: it.c.id, kind: it.c.kind, x: X, y: Y, w: it.w, h: it.h, ch: it.ch }); Y += it.ch + GAP; }   // folded spacing
+    X += col.w + COLGAP;
+  }
+  const ry = computeRender(sim, new Set());   // unfolded detail pushes the cards below, keeping the gap
+  for (const it of sim) out.set(it.id, { x: it.x, y: ry.get(it.id), by: it.y, w: it.w, h: it.h });
+  return out;
+}
+function organise(opts = {}){
+  if (!board || mode !== "board" || organising) return;
+  if (editingId) stopEditing();
+  layout();
+  const cur = new Map();
+  for (const c of board.cards){ const el = els.get(c.id), r = renderPos.get(c.id); if (el) cur.set(c.id, { x: c.x, y: r ? r.y : c.y, w: el.offsetWidth, h: el.offsetHeight }); }
+  const targets = organiseTargets(cur);
+  if (!targets.size){ if (opts.fit) fitView(true); return; }
+  // things sitting on a card move with it
+  const host = (px, py) => { for (const id of targets.keys()){ const r = cur.get(id); if (px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h) return id; } return null; };
+  for (const c of board.cards) if (c.kind === "emoji" && cur.has(c.id)){
+    const r = cur.get(c.id), h = host(r.x + r.w / 2, r.y + r.h / 2);
+    if (h){ const a = cur.get(h), b = targets.get(h); targets.set(c.id, { x: r.x + b.x - a.x, y: r.y + b.y - a.y, w: r.w, h: r.h }); }
+  }
+  const strokeMove = new Map();
+  for (const g of new Set(board.strokes.map(gkey))){
+    const bx = groupBox(g); if (!bx) continue;
+    const h = host(bx.x + bx.w / 2, bx.y + bx.h / 2);
+    if (h){ const a = cur.get(h), b = targets.get(h); strokeMove.set(g, { dx: b.x - a.x, dy: b.y - a.y }); }
+  }
+  const moved = [...targets].some(([id, t]) => { const r = cur.get(id); return Math.abs(r.x - t.x) > 1 || Math.abs(r.y - t.y) > 1; });
+  if (moved) pushUndo();
+  // where the view should end up
+  let v1 = null;
+  if (opts.fit !== false){
+    const rects = board.cards.filter(c => cur.has(c.id)).map(c => targets.get(c.id) || cur.get(c.id));
+    const saved = board.strokes.map(k => k.p);
+    board.strokes.forEach(k => { const m = strokeMove.get(gkey(k)); if (m) k.p = k.p.map((v, i) => v + (i % 2 ? m.dy : m.dx)); });
+    const b = boardBounds(rects);
+    board.strokes.forEach((k, i) => { k.p = saved[i]; });
+    if (b) v1 = fitFor(b);
+  }
+  organising = true; ++viewAnim;
+  const v0 = { ...view }, t0 = performance.now(), D = reduceMotion() ? 0 : 560;
+  const n = board.strokes.length;
+  const frame = now => {
+    const e = D ? ease(Math.min(1, (now - t0) / D)) : 1;
+    for (const [id, to] of targets){
+      const f = cur.get(id), el = els.get(id); if (!el) continue;
+      const x = f.x + (to.x - f.x) * e, y = f.y + (to.y - f.y) * e;
+      el.style.transform = `translate(${x}px, ${y}px)`;
+      renderPos.set(id, { x, y, w: el.offsetWidth, h: el.offsetHeight });
+    }
+    drawEdges();
+    if (strokeMove.size){
+      const paths = inkG.querySelectorAll("path");
+      board.strokes.forEach((k, i) => { const m = strokeMove.get(gkey(k)); if (!m) return; const tr = `translate(${(m.dx * e).toFixed(1)} ${(m.dy * e).toFixed(1)})`; paths[i]?.setAttribute("transform", tr); paths[i + n]?.setAttribute("transform", tr); });
+    }
+    if (v1){ view = { s: v0.s + (v1.s - v0.s) * e, x: v0.x + (v1.x - v0.x) * e, y: v0.y + (v1.y - v0.y) * e }; applyView(); }
+    if (e < 1) requestAnimationFrame(frame);
+    else {
+      for (const [id, to] of targets){ const c = getCard(id); if (c){ c.x = Math.round(to.x); c.y = Math.round(to.by ?? to.y); } }
+      board.strokes.forEach(k => { const m = strokeMove.get(gkey(k)); if (m) k.p = k.p.map((v, i) => +(v + (i % 2 ? m.dy : m.dx)).toFixed(1)); });
+      organising = false;
+      drawInk(); layout();
+      if (moved){ markDirty(); if (!opts.quiet) toast("Organised. Undo with Cmd/Ctrl + Z to put things back."); }
+    }
+  };
+  requestAnimationFrame(frame);
+}
+
 /* ---------- board chooser (shown on open, and from the boards menu or the Whiteboard name) ---------- */
 const picker = $("#picker");
 function previewSVG(b){
@@ -2568,11 +2831,14 @@ async function showPicker(){
   $("#pkSearch").value = "";
   $("#pkBack").hidden = !board;
   picker.hidden = false;
+  document.body.classList.add("picking");
   renderPicker();
   setTimeout(() => (picker.querySelector(".tile.cur") || picker.querySelector(".tile"))?.focus({ preventScroll: true }), 30);
   try { await loadAllBoards(); if (!picker.hidden) renderPicker(); } catch {}
 }
-function hidePicker(){ picker.hidden = true; }
+function hidePicker(){ picker.hidden = true; document.body.classList.remove("picking"); }
+$("#pkImport").addEventListener("click", () => $("#importFile").click());
+$("#pkSignOut").addEventListener("click", signOut);
 $("#pkGrid").addEventListener("click", e => {
   const t = e.target.closest(".tile"); if (!t) return;
   if (t.dataset.id){ hidePicker(); if (t.dataset.id !== boardId) openBoard(t.dataset.id); return; }
@@ -2590,14 +2856,16 @@ window.addEventListener("hashchange", () => { const id = location.hash.slice(1);
 /* ---------- toolbar + keys ---------- */
 $("#addBtn").addEventListener("click", () => mode === "table" ? addRow() : addCardCenter());
 $("#linkBtn").addEventListener("click", () => setLinkMode(!linkMode));
-$("#expandAll").addEventListener("click", () => setAllOpen(true));
-$("#collapseAll").addEventListener("click", () => setAllOpen(false));
+// Expand / collapse all: open or close every card, tidy the board for the new sizes, and zoom to fit.
+$("#expandAll").addEventListener("click", () => { setAllOpen(true); organise({ fit: true, quiet: true }); });
+$("#collapseAll").addEventListener("click", () => { setAllOpen(false); organise({ fit: true, quiet: true }); });
+$("#organiseBtn").addEventListener("click", () => organise({ fit: true }));
 $("#undoBtn").addEventListener("click", doUndo);
 $("#redoBtn").addEventListener("click", doRedo);
 $("#zoomIn").addEventListener("click", () => zoomCenter(1.2));
 $("#zoomOut").addEventListener("click", () => zoomCenter(1 / 1.2));
 $("#zoomLabel").addEventListener("click", () => zoomCenter(1 / view.s));
-$("#fitBtn").addEventListener("click", fitView);
+$("#fitBtn").addEventListener("click", () => fitView(true));
 $("#esNew").addEventListener("click", () => createBoard({ name: "Untitled board", cards: [], edges: [] }, true));
 $("#esExample").addEventListener("click", () => createBoard(exampleBoard()));
 
@@ -2613,9 +2881,10 @@ document.addEventListener("keydown", e => {
   if (mod && e.key.toLowerCase() === "z"){ e.preventDefault(); e.shiftKey ? doRedo() : doUndo(); return; }
   if (!mod && e.key.toLowerCase() === "m" && mode === "board" && board){ setInk(!inkMode); return; }
   if (mod && e.key.toLowerCase() === "y"){ e.preventDefault(); doRedo(); return; }
-  if ((e.key === "Delete" || e.key === "Backspace") && selected && board){
-    e.preventDefault();
-    if (selected.type === "card") deleteCard(selected.id); else if (selected.type === "ink") deleteInkGroup(selected.id); else deleteEdge(selected.id);
+  if (mod && e.key.toLowerCase() === "a" && board && mode === "board"){ e.preventDefault(); selectMany(board.cards.map(c => c.id), [...new Set(board.strokes.map(gkey))]); return; }
+  if ((e.key === "Delete" || e.key === "Backspace") && board){
+    if (selSize()){ e.preventDefault(); deleteSelection(); }
+    else if (selected && selected.type === "edge"){ e.preventDefault(); deleteEdge(selected.id); }
   }
 });
 

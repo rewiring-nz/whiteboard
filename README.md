@@ -2,6 +2,8 @@
 
 Rewiring Aotearoa's whiteboard of fold-out cards.
 
+- Select several things by dragging a box on empty board or Shift-clicking; drag any of them to move them together. Connectors between selected cards are selected too. Undo/Redo: toolbar arrows or Cmd/Ctrl + Z / Shift + Z.
+- **Organise** tidies the board into neat columns and zooms to fit (your own layout is kept until you press it; undo puts it back). Expand all / Collapse all tidy and fit the same way.
 - Opens on a chooser showing every board; each board has its own link (`…/whiteboard/#<board id>`).
 - Click a card's title, summary or detail to edit it in place. The arrow folds and unfolds a card; the cards below move out of the way.
 - Drag from the dot on a card's side to another card to connect them, or let go on empty board to make a new linked card.
