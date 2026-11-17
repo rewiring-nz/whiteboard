@@ -644,6 +644,7 @@ const canLinkFile = OFFLINE && "showSaveFilePicker" in window;
 
 /* ---------- state ---------- */
 let GH = null;                 // {token, owner, repo, branch}
+let rateLeft = 5000;           // GitHub's remaining requests this hour for the shared access key
 let editorName = "";
 const boardData = {};          // id -> sanitized board
 const shas = {};               // id -> blob sha of boards/<id>.json on GitHub
@@ -736,6 +737,8 @@ async function gh(method, path, body, headers){
       body: body ? JSON.stringify(body) : undefined
     });
   } catch { throw httpErr(0, "network"); }
+  const left = +r.headers.get("x-ratelimit-remaining");
+  if (r.headers.get("x-ratelimit-remaining") !== null && isFinite(left)) rateLeft = left;
   return r;
 }
 async function contentOf(j){
@@ -1726,8 +1729,10 @@ function markDirty(){
   setStatus("pending");
   if (!firstDirtyAt) firstDirtyAt = Date.now();
   clearTimeout(saveTimer);
-  // Save after a short pause; never let unsaved work sit for more than 15 seconds.
-  saveTimer = setTimeout(flush, Date.now() - firstDirtyAt > 15000 ? 0 : 2500);
+  // Save about a second after you stop, and at least every 6 seconds while you keep going,
+  // so other people see your changes almost straight away. Slower if GitHub's hourly allowance is running low.
+  const pause = rateLeft < 1000 ? 4000 : 1000, most = rateLeft < 1000 ? 15000 : 6000;
+  saveTimer = setTimeout(flush, Date.now() - firstDirtyAt > most ? 0 : pause);
 }
 function flushSoon(){ clearTimeout(saveTimer); saveTimer = setTimeout(flush, 300); }
 function flush(){ clearTimeout(saveTimer); return queueWrite(doSave); }
@@ -1868,7 +1873,11 @@ async function pollOnce(){
   mirrorLocal();
   toast(`Updated with ${whoChanged(remote)} changes.`);
 }
-setInterval(poll, 5000);
+/* Check for other people's changes every 1.5 seconds while the board is open and on screen. Checks that find
+   nothing new are free against GitHub's hourly allowance; if the allowance runs low, check less often. */
+function pollDelay(){ return rateLeft < 300 ? 20000 : rateLeft < 1000 ? 6000 : 1500; }
+(function pollLoop(){ poll().finally(() => setTimeout(pollLoop, pollDelay())); })();
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") poll(); });
 window.addEventListener("focus", poll);
 
 /* ---------- boards ---------- */

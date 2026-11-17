@@ -38,7 +38,7 @@ Each browser also keeps a last-resort copy of the boards it has opened, and chan
 
 ### Several people on one board
 
-Open boards check for other people's changes every 5 seconds (free against GitHub's limits). When edits cross, they're merged card by card and field by field against the last version each person had, so both people's work is kept. Only when two people change the same field of the same card at the same time does the newest edit win; the other stays in the history. A deleted item stays deleted unless someone edited it meanwhile, in which case it's kept. Undo history resets when other people's changes arrive, so an undo can't wipe out their work.
+Open boards check for other people's changes every 1.5 seconds and save your own about a second after you stop typing. Checks that find nothing new are free against GitHub's hourly allowance for the access key; if that allowance runs low, the board checks and saves less often instead of failing. When edits cross, they're merged card by card and field by field against the last version each person had, so both people's work is kept. Only when two people change the same field of the same card at the same time does the newest edit win; the other stays in the history. A deleted item stays deleted unless someone edited it meanwhile, in which case it's kept. Undo history resets when other people's changes arrive, so an undo can't wipe out their work.
 
 Because the code and the data are in separate repos, changing or redeploying the app never touches board content.
 
