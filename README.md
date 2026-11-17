@@ -10,8 +10,9 @@ Rewiring Aotearoa's whiteboard of fold-out cards.
 - New cards start folded, showing just the title. Drag a card's bottom-right corner (or right edge) to make it wider or narrower; it keeps that width.
 - Paste (or drop) pictures, links and text onto the board. Links appear as short pills; hover to switch one to a preview card (previews come from microlink.io, which is sent the link only when you choose *Show as card*).
 - Emoji button: adds an emoji to the board, or into the text you're typing.
-- **Text** (or T): a floating heading for a section of cards. Click it once to select, again to edit; A− / A+ change the size. A heading moves down when a card above it unfolds, and moves with the card under it when you press Organise.
-- **Timeline**: column bands for Weeks (Week 1, 2, 3…), Months or Years behind the cards, a little wider than a card. They carry on as far as you pan or zoom out. Choose the first month or year, or *Line up with the cards*. It's saved with the board, so everyone sees it.
+- **Text** (or T): a floating heading for a section of cards. Click it once to select, again to edit; Shift + Enter starts a new line; A− / A+ change the size. A heading moves down when a card above it unfolds, and moves with the card under it when you press Organise.
+- **Timeline**: column bands for Weeks (Week 1, 2, 3…), Months or Years behind the cards, a little wider than a card. They carry on as far as you pan or zoom out. Choose the first month or year, or *Line up with the cards*. It's saved with the board, so everyone sees it. While it's on, the Table gets a Week / Month / Year column showing where each card sits (a card spanning columns shows a range, e.g. *Jan – Feb 2027*); it's included in CSV exports.
+- The **?** button bottom left opens a quick guide.
 - Cmd/Ctrl + C, X and V copy, cut and paste cards and drawings (between boards too). Unfolded cards also have a Duplicate button.
 - Set a priority from 1 (highest) to 10 and who is **Responsible** on an unfolded card (names already used are suggested). Both are columns in the Table too.
 - Web addresses in a card's detail become clickable links. Cmd/Ctrl + Enter finishes editing. Colours: 12 presets, a custom colour, or *Auto* (follows priority); the toolbar can also switch the whole board to colour-by-priority.
