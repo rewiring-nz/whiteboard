@@ -550,10 +550,9 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
   <div class="empty-state" id="emptyState" hidden>
     <div class="empty-card">
       <h2>No boards yet</h2>
-      <p>A board holds cards you can fold open to show detail. Start blank, or open the example to see how cards push each other aside when they unfold.</p>
+      <p>A board holds cards you can fold open to show detail.</p>
       <div class="row">
         <button class="btn primary" id="esNew">New blank board</button>
-        <button class="btn" id="esExample">Open the example</button>
       </div>
     </div>
   </div>
@@ -2104,7 +2103,6 @@ function buildBoardsMenu(m){
   ids.forEach(id => item(m, boardData[id].name, () => openBoard(id), id === boardId ? "cur" : "", ago(boardData[id].updatedAt)));
   m.appendChild(document.createElement("hr"));
   item(m, "New blank board", () => createBoard({ name: "Untitled board", cards: [], edges: [] }, true));
-  item(m, "New board from example", () => createBoard(exampleBoard()));
   if (OFFLINE) item(m, "Recently deleted…", showTrash);
 }
 async function showTrash(){
@@ -3056,7 +3054,6 @@ function renderPicker(){
   if (q && !ids.length){ const p = document.createElement("p"); p.className = "pk-none"; p.textContent = "No boards match that."; grid.appendChild(p); }
   if (!q){
     const nb = document.createElement("button"); nb.className = "tile new"; nb.dataset.new = "blank"; nb.innerHTML = "<b>+</b>New blank board"; grid.appendChild(nb);
-    const ex = document.createElement("button"); ex.className = "tile new"; ex.dataset.new = "example"; ex.innerHTML = "<b>+</b>New board from example"; grid.appendChild(ex);
     if (OFFLINE){ const tr = document.createElement("button"); tr.className = "tile new"; tr.dataset.new = "trash"; tr.innerHTML = "Recently deleted…"; grid.appendChild(tr); }
   }
 }
@@ -3080,7 +3077,6 @@ $("#pkGrid").addEventListener("click", e => {
   const t = e.target.closest(".tile"); if (!t) return;
   if (t.dataset.id){ hidePicker(); if (t.dataset.id !== boardId) openBoard(t.dataset.id); return; }
   if (t.dataset.new === "blank"){ hidePicker(); createBoard({ name: "Untitled board", cards: [], edges: [] }, true); }
-  else if (t.dataset.new === "example"){ hidePicker(); createBoard(exampleBoard()); }
   else if (t.dataset.new === "trash") showTrash();
 });
 $("#pkSearch").addEventListener("input", renderPicker);
@@ -3104,7 +3100,6 @@ $("#zoomOut").addEventListener("click", () => zoomCenter(1 / 1.2));
 $("#zoomLabel").addEventListener("click", () => zoomCenter(1 / view.s));
 $("#fitBtn").addEventListener("click", () => fitView(true));
 $("#esNew").addEventListener("click", () => createBoard({ name: "Untitled board", cards: [], edges: [] }, true));
-$("#esExample").addEventListener("click", () => createBoard(exampleBoard()));
 
 document.addEventListener("keydown", e => {
   if (!GH && !OFFLINE) return;
@@ -3124,36 +3119,6 @@ document.addEventListener("keydown", e => {
     else if (selected && selected.type === "edge"){ e.preventDefault(); deleteEdge(selected.id); }
   }
 });
-
-/* ---------- example template ---------- */
-function exampleBoard(){
-  const C = (id, x, y, color, title, summary, body, open = false) => ({ id, x, y, w: 270, color, title, summary, body, open });
-  return {
-    name: "Example: Home electrification plan",
-    cards: [
-      C("goal", 40, 40, "yellow", "The goal", "Off gas and petrol within three years, without a bigger power bill.",
-        "Replace each fossil-fuel machine when it is due, not all at once.\n\n# Today\n- Gas: hot water, hob, heating\n- Petrol: two cars, ~18,000 km/yr\n- Power: ~7,500 kWh/yr\n\n# Order of jobs\n1. Space heating\n2. Solar\n3. First EV\n4. Hot water when the gas cylinder fails", true),
-      C("heat", 40, 150, "blue", "Heat pump for space heating", "Biggest single cut in running cost.",
-        "## Sizing\n- Living area ~45 m², open plan\n- 6 kW high-wall unit is enough with current insulation\n## Running cost\n- About 1 kWh of power gives 3–4 kWh of heat\n- Replaces ~$900/yr of gas\n## Before installing\n- Check ceiling insulation (R3.6 or better)\n- Ask about the outdoor unit placement and noise"),
-      C("hw", 40, 260, "blue", "Hot water heat pump", "Do it when the gas unit fails, or earlier if quotes allow.",
-        "- 250 L tank suits a family of four\n- Timer it to run in the solar window (10am–3pm)\n- Needs a spot outside or a ventilated garage"),
-      C("solar", 360, 40, "green", "Rooftop solar", "Sized for daytime use plus charging one car.",
-        "## Sizing\n- Roof faces north-west, ~30 m² usable\n- 6.6 kW array, roughly 8,000 kWh/yr\n## Payback\n- Value most from using it yourself; export pays far less than import costs\n- Shift dishwasher, washing and EV charging to the middle of the day\n## Next steps\n- Get three quotes with panel and inverter models listed\n- Ask whether the inverter is battery-ready"),
-      C("batt", 360, 150, "green", "Home battery", "Wait until solar has run for a year.",
-        "Decide with real data: look at how much solar is exported in the evening-shortfall months.\n\n> A battery rarely pays back on its own. It's worth it for backup, or if it comes cheap with the solar install."),
-      C("ev", 360, 260, "lilac", "EV and charger", "Replace the commuter car first.",
-        "## The car\n- Daily commute 42 km round trip\n- Any second-hand EV with 150 km real range works\n## Charging\n- 7 kW wall charger on its own circuit\n- Schedule charging for solar hours or the night rate"),
-      C("money", 680, 40, "pink", "Money", "Total ~$38k over three years; low-interest green loan likely.",
-        "# Rough budget\n- Heat pump: $4,500\n- Solar: $13,000\n- Hot water: $6,000\n- Charger: $1,800\n- EV (used): $13,000\n\n# Savings\n- Gas line charges go once the last appliance is off: ~$500/yr\n- Petrol to power: ~$2,000/yr"),
-      C("q", 680, 170, "plain", "Open questions", "Things to find out before signing anything.",
-        "- Does the switchboard need upgrading?\n- Can the lines company take a 6.6 kW export?\n- Who removes the old gas cylinders?")
-    ],
-    edges: [
-      { id: "e1", from: "goal", to: "heat" }, { id: "e2", from: "goal", to: "solar" },
-      { id: "e3", from: "solar", to: "batt" }, { id: "e4", from: "solar", to: "ev" }, { id: "e5", from: "money", to: "q" }
-    ]
-  };
-}
 
 /* ---------- password lock ---------- */
 async function decryptConfig(pass){
