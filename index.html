@@ -376,7 +376,13 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
 .sub > summary::before{content:""; width:0; height:0; border-left:5px solid var(--muted); border-top:4px solid transparent; border-bottom:4px solid transparent; transition:transform .15s; flex:none}
 .sub[open] > summary::before{transform:rotate(90deg)}
 .sub-body{padding:0 0 6px 11px}
-.resize{position:absolute; right:-4px; top:10px; bottom:10px; width:10px; cursor:ew-resize}
+.resize{position:absolute; right:-4px; top:10px; bottom:10px; width:10px; cursor:ew-resize; touch-action:none}
+/* Corner grip: drag to make a card wider or narrower. The width is saved with the card. */
+.resize.rz-c{top:auto; bottom:-5px; right:-5px; width:18px; height:18px; z-index:4; cursor:nwse-resize; opacity:0; transition:opacity .12s}
+.resize.rz-c::after{content:""; position:absolute; right:6px; bottom:6px; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); border-bottom-right-radius:3px}
+.card:hover > .rz-c, .card.sel > .rz-c, .card.resizing > .rz-c{opacity:1}
+.resize.rz-c:hover::after, .card.resizing > .rz-c::after{border-color:var(--accent)}
+.card.resizing{transition:none !important}
 /* Connector dots at the middle of each side: drag from one onto another card to link them */
 .port{position:absolute; z-index:3; width:14px; height:14px; margin:-7px 0 0 -7px; border-radius:50%; padding:0;
   background:var(--surface); border:2px solid var(--accent); cursor:crosshair; opacity:0; transition:opacity .12s, transform .12s; touch-action:none}
@@ -925,7 +931,7 @@ const PORTS = ["t","r","b","l"].map(s => `<button class="port ${s}" data-side="$
 function makeObjEl(c){
   const el = document.createElement("div");
   el.className = "card obj"; el.dataset.id = c.id; el._kind = c.kind;
-  el.innerHTML = `<div class="card-head" role="button" tabindex="0"></div><div class="tools"></div><div class="resize" title="Drag to resize"></div>${PORTS}`;
+  el.innerHTML = `<div class="card-head" role="button" tabindex="0"></div><div class="tools"></div><div class="resize" title="Drag to resize"></div><div class="resize rz-c" title="Drag to make wider or narrower"></div>${PORTS}`;
   el._head = el.querySelector(".card-head"); el._tools = el.querySelector(".tools");
   wireCard(el, c.id);
   el._tools.addEventListener("pointerdown", e => e.stopPropagation());
@@ -1025,7 +1031,7 @@ function makeCardEl(c){
   el.dataset.id = c.id;
   el.innerHTML = `<div class="card-head" tabindex="0" role="button">${ICON.chev}<div class="head-text"><div class="title"></div><div class="summary"></div><div class="fields"></div></div><span class="pbadge" title="Priority"></span>
     <div class="tools"><button class="t-dup" title="Duplicate card" aria-label="Duplicate card">${ICON.dup}</button><button class="t-link" title="Link to another card" aria-label="Link to another card">${ICON.link}</button><button class="t-edit" title="Colour, columns and more" aria-label="Colour, columns and more">${ICON.edit}</button></div></div>
-    <div class="wrap"><div class="inner"><div class="slot"></div></div></div><div class="resize" title="Drag to resize"></div>
+    <div class="wrap"><div class="inner"><div class="slot"></div></div></div><div class="resize" title="Drag to resize"></div><div class="resize rz-c" title="Drag to make wider or narrower"></div>
     ${["t","r","b","l"].map(s => `<button class="port ${s}" data-side="${s}" title="Drag to another card to connect" aria-label="Connect to another card" tabindex="-1"></button>`).join("")}`;
   el._head = el.querySelector(".card-head");
   el._title = el.querySelector(".title");
@@ -1282,18 +1288,134 @@ function boundaryPoint(r, dx, dy){
   const t = Math.min(hw / Math.max(Math.abs(dx), 1e-6), hh / Math.max(Math.abs(dy), 1e-6));
   return [cx + dx * t, cy + dy * t];
 }
+/* ---------- connector routing ----------
+   Connectors leave from the side of one card and enter the side of the other as a smooth curve.
+   If that curve would cross another card, the line is routed around cards (keeping a margin) with rounded bends. */
+const ROUTE_M = 16, ROUTE_R = 26, routeCache = new Map();
+function edgeEnds(a, b){
+  const hgap = Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w)), vgap = Math.max(b.y - (a.y + a.h), a.y - (b.y + b.h));
+  const ay = a.y + Math.min(a.h / 2, 34), by = b.y + Math.min(b.h / 2, 34);    // near the title, so links stay with the heading of tall unfolded cards
+  if (hgap >= vgap || hgap > 40){
+    const r = b.x + b.w / 2 >= a.x + a.w / 2;
+    return [{ x: r ? a.x + a.w : a.x, y: ay, nx: r ? 1 : -1, ny: 0 }, { x: r ? b.x : b.x + b.w, y: by, nx: r ? -1 : 1, ny: 0 }];
+  }
+  const d = b.y + b.h / 2 >= a.y + a.h / 2;
+  return [{ x: a.x + a.w / 2, y: d ? a.y + a.h : a.y, nx: 0, ny: d ? 1 : -1 }, { x: b.x + b.w / 2, y: d ? b.y : b.y + b.h, nx: 0, ny: d ? -1 : 1 }];
+}
+const inObs = (obs, x, y) => obs.some(o => x > o.x0 && x < o.x1 && y > o.y0 && y < o.y1);
+function bezierRoute(p, q){
+  const k = clamp(Math.hypot(q.x - p.x, q.y - p.y) * 0.45, 30, 160);
+  const c1 = [p.x + p.nx * k, p.y + p.ny * k], c2 = [q.x + q.nx * k, q.y + q.ny * k];
+  const at = t => { const u = 1 - t; return [u*u*u*p.x + 3*u*u*t*c1[0] + 3*u*t*t*c2[0] + t*t*t*q.x, u*u*u*p.y + 3*u*u*t*c1[1] + 3*u*t*t*c2[1] + t*t*t*q.y]; };
+  return { d: `M${p.x.toFixed(1)} ${p.y.toFixed(1)}C${c1[0].toFixed(1)} ${c1[1].toFixed(1)} ${c2[0].toFixed(1)} ${c2[1].toFixed(1)} ${q.x.toFixed(1)} ${q.y.toFixed(1)}`, mid: at(0.5), at };
+}
+/* Shortest route with few bends on a sparse grid made from the edges of the cards in the way. */
+function gridRoute(S, E, sDir, eDir, obs, box){
+  const xs = [...new Set([S.x, E.x, (S.x + E.x) / 2, box.x0, box.x1, ...obs.flatMap(o => [o.x0, o.x1])].map(v => Math.round(v)))].sort((m, n) => m - n);
+  const ys = [...new Set([S.y, E.y, (S.y + E.y) / 2, box.y0, box.y1, ...obs.flatMap(o => [o.y0, o.y1])].map(v => Math.round(v)))].sort((m, n) => m - n);
+  const W = xs.length, H = ys.length, N = W * H;
+  if (N > 40000) return null;
+  const free = new Uint8Array(N);
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) free[j * W + i] = inObs(obs, xs[i], ys[j]) ? 0 : 1;
+  const si = xs.indexOf(Math.round(S.x)) + ys.indexOf(Math.round(S.y)) * W, ei = xs.indexOf(Math.round(E.x)) + ys.indexOf(Math.round(E.y)) * W;
+  if (!free[si] || !free[ei]) return null;
+  const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1], BEND = 60;
+  const dirOf = (nx, ny) => nx > 0 ? 0 : ny > 0 ? 1 : nx < 0 ? 2 : 3;
+  const sd = dirOf(sDir.nx, sDir.ny), ed = dirOf(-eDir.nx, -eDir.ny);
+  const cost = new Float64Array(N * 4).fill(Infinity), prev = new Int32Array(N * 4).fill(-1);
+  const heap = [];   // [f, state]
+  const push = (f, st) => { heap.push([f, st]); let i = heap.length - 1; while (i){ const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length){ heap[0] = last; let i = 0; for (;;){ const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  const hx = xs[ei % W], hy = ys[Math.floor(ei / W)];
+  const h = n => Math.abs(xs[n % W] - hx) + Math.abs(ys[Math.floor(n / W)] - hy);
+  cost[si * 4 + sd] = 0; push(h(si), si * 4 + sd);
+  let goal = -1, guard = 0;
+  while (heap.length && guard++ < 200000){
+    const [, st] = pop(); const n = st >> 2, d = st & 3, c = cost[st];
+    if (n === ei){ goal = st; if (d === ed) break; continue; }
+    const i = n % W, j = (n - i) / W;
+    for (let nd = 0; nd < 4; nd++){
+      if (nd === (d + 2) % 4) continue;
+      const ni = i + DX[nd], nj = j + DY[nd];
+      if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
+      const m = nj * W + ni; if (!free[m]) continue;
+      if (inObs(obs, (xs[i] + xs[ni]) / 2, (ys[j] + ys[nj]) / 2)) continue;
+      let nc = c + Math.abs(xs[ni] - xs[i]) + Math.abs(ys[nj] - ys[j]) + (nd === d ? 0 : BEND);
+      if (m === ei && nd !== ed) nc += BEND;
+      const ns = m * 4 + nd;
+      if (nc < cost[ns]){ cost[ns] = nc; prev[ns] = st; push(nc + h(m), ns); }
+    }
+  }
+  if (goal < 0){ for (let d = 0; d < 4; d++) if (cost[ei * 4 + d] < Infinity && (goal < 0 || cost[ei * 4 + d] < cost[goal])) goal = ei * 4 + d; }
+  if (goal < 0) return null;
+  const pts = [];
+  for (let st = goal; st >= 0; st = prev[st]){ const n = st >> 2; pts.push([xs[n % W], ys[Math.floor(n / W)]]); }
+  return pts.reverse();
+}
+function roundedPath(pts){
+  const q = [pts[0]];
+  for (let i = 1; i < pts.length; i++){               // drop repeats and points in the middle of straight runs
+    const a = q[q.length - 1], b = pts[i];
+    if (Math.abs(a[0] - b[0]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5) continue;
+    if (q.length >= 2){ const z = q[q.length - 2]; if ((Math.abs(z[0] - a[0]) < 0.5 && Math.abs(a[0] - b[0]) < 0.5) || (Math.abs(z[1] - a[1]) < 0.5 && Math.abs(a[1] - b[1]) < 0.5)){ q[q.length - 1] = b; continue; } }
+    q.push(b);
+  }
+  let d = `M${q[0][0]} ${q[0][1]}`;
+  for (let i = 1; i < q.length - 1; i++){
+    const [px, py] = q[i - 1], [cx, cy] = q[i], [nx, ny] = q[i + 1];
+    const l1 = Math.hypot(cx - px, cy - py), l2 = Math.hypot(nx - cx, ny - cy), r = Math.min(ROUTE_R, l1 / 2, l2 / 2);
+    d += `L${(cx - (cx - px) / l1 * r).toFixed(1)} ${(cy - (cy - py) / l1 * r).toFixed(1)}Q${cx} ${cy} ${(cx + (nx - cx) / l2 * r).toFixed(1)} ${(cy + (ny - cy) / l2 * r).toFixed(1)}`;
+  }
+  d += `L${q[q.length - 1][0]} ${q[q.length - 1][1]}`;
+  // midpoint along the route, for the Remove button
+  let total = 0; for (let i = 1; i < q.length; i++) total += Math.hypot(q[i][0] - q[i-1][0], q[i][1] - q[i-1][1]);
+  let half = total / 2, mid = q[0];
+  for (let i = 1; i < q.length; i++){ const l = Math.hypot(q[i][0] - q[i-1][0], q[i][1] - q[i-1][1]); if (half <= l){ const t = l ? half / l : 0; mid = [q[i-1][0] + (q[i][0] - q[i-1][0]) * t, q[i-1][1] + (q[i][1] - q[i-1][1]) * t]; break; } half -= l; }
+  return { d, mid };
+}
+function routeEdge(e, a, b){
+  const [p, q] = edgeEnds(a, b);
+  const pad = 420, box = { x0: Math.min(p.x, q.x) - pad, x1: Math.max(p.x, q.x) + pad, y0: Math.min(p.y, q.y) - pad, y1: Math.max(p.y, q.y) + pad };
+  const obsAt = m => {
+    const out = [];
+    for (const [id, r] of renderPos){
+      if (id === e.from || id === e.to) continue;
+      const o = { x0: r.x - m, y0: r.y - m, x1: r.x + r.w + m, y1: r.y + r.h + m };
+      if (o.x1 < box.x0 || o.x0 > box.x1 || o.y1 < box.y0 || o.y0 > box.y1) continue;
+      out.push(o);
+    }
+    return out;
+  };
+  const obs = obsAt(ROUTE_M);
+  const key = [p.x, p.y, p.nx, p.ny, q.x, q.y, q.nx, q.ny, ...obs.flatMap(o => [o.x0, o.y0, o.x1, o.y1])].map(Math.round).join(",");
+  const hit = routeCache.get(key); if (hit) return hit;
+  let res = bezierRoute(p, q);
+  let clear = true;
+  for (let t = 0.04; t < 0.97 && clear; t += 0.04){ const [x, y] = res.at(t); if (inObs(obs, x, y)) clear = false; }
+  if (!clear){
+    // try with the full margin first, then squeeze through narrower gaps between cards that sit close together
+    for (const m of [ROUTE_M, 7, 3]){
+      const st = m + Math.min(8, m);
+      const S = { x: p.x + p.nx * st, y: p.y + p.ny * st }, E = { x: q.x + q.nx * st, y: q.y + q.ny * st };
+      const pts = gridRoute(S, E, p, q, m === ROUTE_M ? obs : obsAt(m), box);
+      if (pts){ res = roundedPath([[p.x, p.y], ...pts, [q.x, q.y]]); break; }
+    }
+  }
+  const out = { d: res.d, mid: res.mid };
+  if (routeCache.size > 800) routeCache.clear();
+  routeCache.set(key, out);
+  return out;
+}
 function drawEdges(){
   if (!board){ edgeG.innerHTML = ""; edgeDel.hidden = true; return; }
   let html = "", delPos = null;
   for (const e of board.edges){
     const a = renderPos.get(e.from), b = renderPos.get(e.to);
     if (!a || !b) continue;
-    const dx = (b.x + b.w / 2) - (a.x + a.w / 2), dy = (b.y + b.h / 2) - (a.y + a.h / 2);
-    const [x1, y1] = boundaryPoint(a, dx, dy), [x2, y2] = boundaryPoint(b, -dx, -dy);
     const sel = edgeSelected(e);
-    const d = `M${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}`;
+    const { d, mid } = routeEdge(e, a, b);
     html += `<path class="e${sel ? " sel" : ""}" d="${d}" marker-end="url(#${sel ? "arrSel" : "arr"})"/><path class="hit" data-id="${e.id}" d="${d}"/>`;
-    if (sel && selected && selected.type === "edge") delPos = [(x1 + x2) / 2, (y1 + y2) / 2];
+    if (sel && selected && selected.type === "edge") delPos = mid;
   }
   edgeG.innerHTML = html;
   if (delPos){ edgeDel.hidden = false; edgeDel.style.left = delPos[0] + "px"; edgeDel.style.top = delPos[1] + "px"; }
@@ -1469,17 +1591,26 @@ function wireCard(el, id){
   wireResize(el, id);
 }
 function wireResize(el, id){
-  const rz = el.querySelector(".resize");
-  rz.addEventListener("pointerdown", e => {
+  el.querySelectorAll(".resize").forEach(rz => rz.addEventListener("pointerdown", e => {
+    if (e.button !== 0) return;
     e.stopPropagation(); e.preventDefault();
     const c = getCard(id); if (!c) return;
     const st = { px: e.clientX, w: c.w, moved: false };
-    rz.setPointerCapture(e.pointerId);
+    try { rz.setPointerCapture(e.pointerId); } catch {}
     const [lo, hi] = c.kind === "card" ? [180, 640] : c.kind === "text" ? [12, 240] : [24, 1600];
-    const move = ev => { if (!st.moved){ st.moved = true; pushUndo(); } c.w = clamp(Math.round(st.w + (ev.clientX - st.px) / view.s), lo, hi); if (el._kind) updateCardEl(el, c); else el.style.width = c.w + "px"; };
-    const up = () => { rz.removeEventListener("pointermove", move); rz.removeEventListener("pointerup", up); if (st.moved) markDirty(); };
-    rz.addEventListener("pointermove", move); rz.addEventListener("pointerup", up);
-  });
+    const move = ev => {
+      if (!st.moved){ st.moved = true; pushUndo(); el.classList.add("resizing"); }
+      c.w = clamp(Math.round(st.w + (ev.clientX - st.px) / view.s), lo, hi);
+      if (el._kind) updateCardEl(el, c); else el.style.width = c.w + "px";
+      scheduleLayout();
+    };
+    const up = () => {
+      rz.removeEventListener("pointermove", move); rz.removeEventListener("pointerup", up); rz.removeEventListener("pointercancel", up);
+      el.classList.remove("resizing");
+      if (st.moved){ scheduleLayout(); markDirty(); }
+    };
+    rz.addEventListener("pointermove", move); rz.addEventListener("pointerup", up); rz.addEventListener("pointercancel", up);
+  }));
 }
 
 /* Drag from a side dot to another card to create a connector */
@@ -1524,7 +1655,7 @@ function startConnect(e, id, port){
       const color = ls.get("fb-color", "yellow");
       pushUndo();
       const spot = freeSpot(end.x - 130, end.y - 22, 260, 60, "down");
-      const c = sanitizeBoard({ cards: [{ id: uid(), kind: "card", x: spot.x, y: spot.y, w: 260, title: "New topic", color: (COLORS.includes(color) || color === "auto" || /^#[0-9a-f]{6}$/.test(color)) ? color : (from && from.color) || "yellow", open: true }] }).cards[0];
+      const c = sanitizeBoard({ cards: [{ id: uid(), kind: "card", x: spot.x, y: spot.y, w: 260, title: "New topic", color: (COLORS.includes(color) || color === "auto" || /^#[0-9a-f]{6}$/.test(color)) ? color : (from && from.color) || "yellow", open: false }] }).cards[0];
       board.cards.push(c);
       board.edges.push({ id: uid(), from: id, to: c.id });
       markDirty();
@@ -1570,7 +1701,7 @@ function addCardAt(x, y){
   if (!board) return;
   pushUndo();
   const color = ls.get("fb-color", "yellow");
-  const c = { id: uid(), x: Math.round(x), y: Math.round(y), w: 260, title: "New topic", summary: "", body: "", color: (COLORS.includes(color) || color === "auto" || /^#[0-9a-f]{6}$/.test(color)) ? color : "yellow", open: true, fields: {}, priority: 0, kind: "card" };
+  const c = { id: uid(), x: Math.round(x), y: Math.round(y), w: 260, title: "New topic", summary: "", body: "", color: (COLORS.includes(color) || color === "auto" || /^#[0-9a-f]{6}$/.test(color)) ? color : "yellow", open: false, fields: {}, priority: 0, kind: "card" };
   board.cards.push(c); markDirty();
   renderCards(); select({ type: "card", id: c.id });
   startInline(els.get(c.id), c.id, "title", null, null, true);
