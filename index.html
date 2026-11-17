@@ -54,7 +54,7 @@ button{font:inherit; color:inherit}
 /* Toolbar */
 .bar{flex:none; background:var(--surface); border-bottom:1px solid var(--line); position:relative; z-index:20;
   padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); padding-block:8px}
-.bar-row{display:flex; align-items:center; gap:6px; overflow-x:auto; scrollbar-width:none}
+.bar-row{display:flex; align-items:center; gap:6px; row-gap:6px; flex-wrap:wrap}   /* wraps to a second line rather than hiding tools off the edge */
 .bar-row::-webkit-scrollbar{display:none}
 .grp{display:flex; align-items:center; gap:2px; flex:none}
 .sep{width:1px; height:22px; background:var(--line); flex:none; margin-inline:4px}
@@ -93,6 +93,17 @@ button{font:inherit; color:inherit}
 .file-banner{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; top:56px}
 .file-banner .btn{height:28px}
 body.offline .lock{display:none}
+
+/* Who's on this board */
+.who{display:flex; align-items:center; gap:4px; flex:none; padding-inline:4px}
+.who-chip{display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 9px 0 4px; border-radius:12px; background:var(--surface-2); border:1px solid var(--line);
+  font-size:12px; font-weight:500; color:var(--ink); white-space:nowrap}
+.who-chip i{display:grid; place-items:center; width:16px; height:16px; border-radius:50%; font:600 9px/1 var(--f-body); font-style:normal; color:#fff}
+.who-chip.me{cursor:pointer}
+.who-chip.me:hover{border-color:var(--accent)}
+.who-more{font-size:12px; color:var(--muted); padding-inline:2px}
+@media (max-width: 760px){ .who-chip{padding-right:4px} .who-chip .nm{display:none} }
+@media (max-width: 900px){ .status span{display:none} }
 
 /* Board chooser */
 .picker{position:absolute; inset:0; z-index:12; overflow:auto; background:var(--board);
@@ -494,6 +505,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
       <button class="btn" id="fitBtn" title="Fit all cards on screen">Fit</button>
     </div>
     <div class="spacer"></div>
+    <div class="who" id="who" hidden aria-label="Who's on this board"></div>
     <div class="status" id="status" data-s="pending"><i></i><span>Locked</span></div>
     <button class="btn" id="versionsBtn" title="History and saved versions of this board"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="5.5"/><path d="M8 5v3.2l2 1.3"/></svg>History</button>
     <button class="btn icon" id="moreBtn" title="More" aria-label="More options"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="3.5" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12.5" cy="8" r="1.3"/></svg></button>
@@ -1880,6 +1892,92 @@ function pollDelay(){ return rateLeft < 300 ? 20000 : rateLeft < 1000 ? 6000 : 1
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") poll(); });
 window.addEventListener("focus", poll);
 
+/* ---------- who's on this board ----------
+   Each open board checks in about once a minute by writing its viewer's first name to presence/<board>.json
+   on a separate "presence" branch (so board history stays clean), and reads that file every 15 seconds.
+   Anyone who hasn't checked in for 2.5 minutes is treated as gone. */
+const PRESENCE = "presence";
+let presence = {}, presenceEtag = null, presenceFor = null, lastBeat = 0;
+const firstName = n => (String(n || "").trim().split(/\s+/)[0] || "").slice(0, 20);
+const hue = n => { let h = 0; for (const ch of n) h = (h * 31 + ch.charCodeAt(0)) % 360; return h; };
+function renderPresence(){
+  const box = $("#who");
+  if (OFFLINE || !GH || !boardId){ box.hidden = true; return; }
+  const now = Date.now(), seen = new Map();
+  for (const [cid, v] of Object.entries(presence)){
+    if (!v || now - (+v.at || 0) > 150000 || v.board !== boardId) continue;
+    const n = firstName(v.name) || "Someone";
+    if (cid === clientId || (n === (firstName(editorName) || "Someone") && seen.has("__me"))) continue;
+    if (!seen.has(n)) seen.set(n, n);
+  }
+  const me = firstName(editorName);
+  const others = [...seen.keys()].filter(n => n !== "__me" && n !== me).sort((a, b) => a.localeCompare(b));
+  const chip = (n, mine) => `<span class="who-chip${mine ? " me" : ""}" ${mine ? `title="That's you. Click to change your name." role="button" tabindex="0"` : `title="${esc(n)} is on this board"`}><i style="background:hsl(${hue(n)} 55% 48%)">${esc(n[0] || "?").toUpperCase()}</i><span class="nm">${esc(n)}${mine ? " (you)" : ""}</span></span>`;
+  box.innerHTML = others.slice(0, 5).map(n => chip(n, false)).join("") + (others.length > 5 ? `<span class="who-more">+${others.length - 5}</span>` : "") + chip(me || "Add your name", true);
+  box.hidden = false;
+}
+async function ensurePresenceBranch(){
+  const r = await gh("GET", `git/ref/heads/${PRESENCE}`);
+  if (r.ok) return true;
+  if (r.status !== 404) return false;
+  const main = await gh("GET", `git/ref/heads/${encodeURIComponent(GH.branch)}`); if (!main.ok) return false;
+  const sha = (await main.json()).object.sha;
+  const c = await gh("POST", "git/refs", { ref: `refs/heads/${PRESENCE}`, sha });
+  return c.ok || c.status === 422;
+}
+async function readPresence(force){
+  if (OFFLINE || !GH || !boardId || document.hidden) return;
+  if (presenceFor !== boardId){ presenceFor = boardId; presenceEtag = null; presence = {}; }
+  let r;
+  try { r = await gh("GET", `contents/presence/${boardId}.json?ref=${PRESENCE}`, null, presenceEtag && !force ? { "If-None-Match": presenceEtag } : {}); } catch { return; }
+  if (r.status === 304){ renderPresence(); return null; }
+  if (!r.ok){ renderPresence(); return null; }
+  presenceEtag = r.headers.get("ETag");
+  const j = await r.json();
+  try { presence = JSON.parse(await contentOf(j)) || {}; } catch { presence = {}; }
+  renderPresence();
+  return j.sha;
+}
+let beating = false;
+async function heartbeat(leaving){
+  if (beating){ if (!leaving) setTimeout(() => heartbeat(), 1500); return; }
+  if (OFFLINE || !GH || !boardId || (document.hidden && !leaving) || rateLeft < 300) return;
+  beating = true;
+  const id = boardId, path = `presence/${id}.json`;
+  try {
+    for (let attempt = 0; attempt < 3; attempt++){
+      let data = {}, sha;
+      const r = await gh("GET", `contents/${path}?ref=${PRESENCE}`);
+      if (r.ok){ const j = await r.json(); sha = j.sha; try { data = JSON.parse(await contentOf(j)) || {}; } catch {} }
+      const now = Date.now();
+      for (const k of Object.keys(data)) if (!data[k] || now - (+data[k].at || 0) > 150000) delete data[k];
+      if (leaving) delete data[clientId]; else data[clientId] = { name: firstName(editorName) || "Someone", at: now, board: id };
+      const put = await gh("PUT", `contents/${path}`, { message: leaving ? "left" : "here", content: b64e(JSON.stringify(data)), branch: PRESENCE, ...(sha ? { sha } : {}) });
+      if (put.ok){ lastBeat = now; if (id === boardId){ presence = data; presenceEtag = null; renderPresence(); } return; }
+      if (put.status === 404 || (put.status === 422 && !sha)){ if (!(await ensurePresenceBranch())) return; continue; }
+      if (put.status !== 409 && put.status !== 422) return;
+    }
+  } catch {} finally { beating = false; }
+}
+(function presenceLoop(){
+  const run = async () => {
+    if (!OFFLINE && GH && boardId && !document.hidden){
+      if (Date.now() - lastBeat > (rateLeft < 1000 ? 180000 : 60000)) await heartbeat();
+      else await readPresence();
+    }
+    setTimeout(presenceLoop, rateLeft < 1000 ? 60000 : 15000);
+  };
+  run();
+})();
+$("#who").addEventListener("click", e => {
+  if (!e.target.closest(".who-chip.me")) return;
+  promptDialog("Your first name", firstName(editorName), "Save", name => {
+    editorName = name.slice(0, 40); ls.set("fb-name", editorName);
+    for (const st of [ls, ss]){ const a = st.get("fb-auth", null); if (a){ a.name = editorName; st.set("fb-auth", a); } }
+    lastBeat = 0; heartbeat(); renderPresence();
+  });
+});
+
 /* ---------- boards ---------- */
 async function loadAllBoards(){
   if (OFFLINE){
@@ -1910,8 +2008,10 @@ async function openBoard(id){
   stopEditing();
   if (linkMode) setLinkMode(false);
   clearCards();
+  if (boardId && boardId !== id && !OFFLINE && GH) heartbeat(true);   // leave the previous board's list
   boardId = id; board = clone(boardData[id]);
   undoStack = []; redoStack = []; updUndo(); selected = null; editingId = null; dirty = false;
+  presence = {}; presenceFor = null; lastBeat = 0; renderPresence(); setTimeout(() => heartbeat(), 400);
   ls.set("fb-last", id);
   hidePicker();
   if (location.hash.slice(1) !== id) history.replaceState(null, "", "#" + id);
@@ -1934,7 +2034,8 @@ async function createBoard(data, focusName){
   return id;
 }
 function showEmpty(){
-  clearCards(); board = null; boardId = null;
+  if (boardId && !OFFLINE && GH) heartbeat(true);
+  clearCards(); board = null; boardId = null; renderPresence();
   $("#boardName").value = ""; $("#boardName").disabled = true;
   edgeG.innerHTML = ""; edgeDel.hidden = true;
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
