@@ -1360,14 +1360,22 @@ function renderCards(){
 }
 function clearCards(){ for (const [, el] of els){ ro.unobserve(el); el.remove(); } els.clear(); renderPos.clear(); }
 
-/* Layout: a card is pushed down by any card above it that overlaps it horizontally, so nothing is ever covered
-   when a card unfolds or its header grows. The gap they had when folded is kept (at least 10px).
+/* Layout: cards sit exactly where they are put. The only movement is when a card above unfolds or grows: the cards
+   below it (that were clear of it when it was folded) move down by exactly that growth, so they keep their gap.
+   A card dropped overlapping another stays where it was dropped.
    Emoji stickers float freely so they can sit on top of cards. */
 let layoutQueued = false;
 function scheduleLayout(){ if (!layoutQueued){ layoutQueued = true; requestAnimationFrame(layout); } }
+/* A card's folded height. Unfolding also grows the header (the summary line appears), so it's remembered while the
+   card is folded and used while it's open. */
+function foldH(c, el){
+  if (el._kind) return el._kind === "link" ? Math.min(el.offsetHeight, 32) : el.offsetHeight;
+  const h = el._head.offsetHeight + 2;
+  if (!c.open && editingId !== c.id) el._foldH = h;
+  return el._foldH || h;
+}
 function measureItem(c, el){
-  return { id: c.id, kind: c.kind, x: c.x, y: c.y, w: el.offsetWidth, h: el.offsetHeight,
-    ch: el._kind === "link" ? Math.min(el.offsetHeight, 32) : el._kind ? el.offsetHeight : el._head.offsetHeight + 2 };
+  return { id: c.id, kind: c.kind, x: c.x, y: c.y, w: el.offsetWidth, h: el.offsetHeight, ch: foldH(c, el) };
 }
 // Given each card's resting (folded) position and its current height, where it shows on screen.
 function computeRender(items, dragging){
@@ -1379,9 +1387,8 @@ function computeRender(items, dragging){
       for (const p of placed){
         if (p.kind === "emoji" || p.kind === "text" || dragging.has(p.id)) continue;
         if (p.x < it.x + it.w - 2 && it.x < p.x + p.w - 2 && it.y - p.y > 24){
-          const gap = it.y - (p.y + p.ch);
-          if (it.kind === "text" && gap < 0) continue;      // a heading placed over a card stays where it was put
-          y = Math.max(y, p.ry + p.h + Math.max(gap, 10));
+          if (it.y < p.y + p.ch - 1) continue;             // placed overlapping it: stays where it was put
+          y = Math.max(y, it.y + (p.ry - p.y) + Math.max(0, p.h - p.ch));   // move down only by how much the card above grew
         }
       }
     }
@@ -3465,7 +3472,7 @@ emojiBtn.addEventListener("click", () => {
 let organising = false;
 function foldedHeight(c){
   const el = els.get(c.id); if (!el) return 60;
-  return el._kind === "link" ? Math.min(el.offsetHeight, 32) : el._kind ? el.offsetHeight : el._head.offsetHeight + 2;
+  return foldH(c, el);
 }
 function finalHeight(c){
   const el = els.get(c.id); if (!el) return 80;
