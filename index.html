@@ -1053,6 +1053,7 @@ function makeObjEl(c){
     const cc = getCard(c.id); if (!cc) return;
     if (b.dataset.act === "del") deleteCard(cc.id);
     else if (b.dataset.act === "edit") startTextEdit(el, cc.id, true);
+    else if (b.dataset.act === "tocard") convertCard(cc.id, "card");
     else if (b.dataset.act === "bigger" || b.dataset.act === "smaller"){
       pushUndo(); const steps = [14, 18, 24, 30, 36, 48, 64, 80, 104, 136, 180, 240];
       cc.w = b.dataset.act === "bigger" ? (steps.find(v => v > cc.w) || 240) : ([...steps].reverse().find(v => v < cc.w) || 12);
@@ -1097,7 +1098,7 @@ function updateObjEl(el, c){
   } else if (c.kind === "text"){
     h.innerHTML = `<span class="tx"></span>`;
     const tx = h.querySelector(".tx"); tx.textContent = c.title; tx.style.fontSize = c.w + "px";
-    el._tools.innerHTML = `<button data-act="smaller" title="Smaller" aria-label="Smaller text">A−</button><button data-act="bigger" title="Bigger" aria-label="Bigger text">A+</button><button data-act="edit" title="Edit text">Edit</button>${del}`;
+    el._tools.innerHTML = `<button data-act="smaller" title="Smaller" aria-label="Smaller text">A−</button><button data-act="bigger" title="Bigger" aria-label="Bigger text">A+</button><button data-act="edit" title="Edit text">Edit</button><button data-act="tocard" title="Turn this heading into a card">Card</button>${del}`;
   } else if (c.kind === "emoji"){
     h.innerHTML = `<span class="em"></span>`;
     const em = h.querySelector(".em"); em.textContent = c.emoji; em.style.fontSize = Math.round(c.w * 0.82) + "px";
@@ -1196,7 +1197,7 @@ function buildEditor(el, c){
     <label><div>Detail <span>(shown when unfolded)</span></div><textarea id="bo-${id}"></textarea></label>
     <div class="hint">Start a line with <code>##</code> for a section that folds open on its own, <code>-</code> for bullets, <code>#</code> for a small heading. Use <code>**bold**</code> and <code>[link](https://…)</code>.</div>
     <div class="swatches" role="group" aria-label="Card colour"></div>
-    <div class="edit-actions"><button class="btn del">Delete card</button><button class="btn primary done">Done</button></div></div>`;
+    <div class="edit-actions"><button class="btn del">Delete card</button><button class="btn to-text" title="Turn this card into floating heading text (its summary, detail and other fields are kept, and come back if you turn it into a card again)">Make heading</button><button class="btn primary done">Done</button></div></div>`;
   const ti = el._slot.querySelector("#ti-" + id), su = el._slot.querySelector("#su-" + id), bo = el._slot.querySelector("#bo-" + id);
   ti.value = c.title; su.value = c.summary; bo.value = c.body;
   el._slot.querySelectorAll("input[data-col]").forEach(inp => {
@@ -1217,6 +1218,7 @@ function buildEditor(el, c){
   drawSw();
   el._slot.querySelector(".done").addEventListener("click", () => stopEditing());
   el._slot.querySelector(".del").addEventListener("click", () => deleteCard(id));
+  el._slot.querySelector(".to-text").addEventListener("click", () => convertCard(id, "text"));
   [ti, su].forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); stopEditing(); } }));
   requestAnimationFrame(size);
 }
@@ -1923,6 +1925,19 @@ function addCardCenter(){
   const r = vp.getBoundingClientRect();
   const off = (board ? board.cards.length % 5 : 0) * 18;
   addCardAt((r.width / 2 - view.x) / view.s - 130 + off, (r.height / 3 - view.y) / view.s + off);
+}
+/* Switch a card to heading text and back. Nothing is dropped: summary, detail, priority, owner, colour and fields
+   stay on it, and the card's width (w) and the heading's size share one field, so the other is kept in cardW / textW. */
+function convertCard(id, kind){
+  const c = getCard(id); if (!c || c.kind === kind || !(kind === "text" || kind === "card")) return;
+  if (editingId === id){ editingId = null; }
+  pushUndo();
+  if (kind === "text"){ c.cardW = c.w; c.w = clamp(+c.textW || 36, 12, 240); c.title = c.title.trim() || "Heading"; c.open = false; }
+  else { c.textW = c.w; c.w = clamp(+c.cardW || 260, 180, 640); }
+  c.kind = kind;
+  const el = els.get(id); if (el){ ro.unobserve(el); el.remove(); els.delete(id); }   // the two kinds are built differently
+  renderCards(); select({ type: "card", id }); markDirty();
+  toast(kind === "text" ? "Now a heading. Its details are kept; use Card to switch back." : "Now a card.");
 }
 function deleteCard(id){
   pushUndo();
