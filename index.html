@@ -319,6 +319,14 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
   font:600 12px/1 var(--f-body); color:var(--muted); background:color-mix(in srgb, var(--board) 88%, transparent);
   border-left:1px solid color-mix(in srgb, var(--ink) 16%, transparent); border-bottom:1px solid var(--line)}
 #tlHead b.now{color:var(--accent)}
+/* Live: other people's pointers, and a name tag on the card someone is typing in or moving */
+#cursors{position:absolute; inset:0; pointer-events:none; overflow:hidden; z-index:6}
+#cursors .cur{position:absolute; left:0; top:0; transition:transform 90ms linear; will-change:transform}
+#cursors .cur svg{display:block; width:18px; height:18px; filter:drop-shadow(0 1px 1px rgb(0 0 0 / .25))}
+#cursors .cur span{position:absolute; left:14px; top:15px; padding:2px 7px; border-radius:6px; font:600 11.5px/1.3 var(--f-body); color:#fff; white-space:nowrap; background:var(--c)}
+#cursors .cur.idle{opacity:.45}
+.card.live-busy{outline:2px solid var(--live); outline-offset:2px}
+.card .live-tag{position:absolute; top:-21px; left:8px; padding:1px 7px; border-radius:6px 6px 6px 0; font:600 11px/1.5 var(--f-body); color:#fff; background:var(--live); pointer-events:none; white-space:nowrap; z-index:2}
 /* Vertical timeline: rows down the board, labels pinned to the left edge */
 #tlHead.v{bottom:0; height:auto}
 #tl.v i{top:auto; bottom:auto; left:0; right:0; border-left:0; border-top:1px solid color-mix(in srgb, var(--ink) 16%, transparent)}
@@ -587,6 +595,7 @@ table.grid{border-collapse:separate; border-spacing:0; min-width:100%; font-size
     <button id="edgeDel" hidden>Remove link</button>
   </div>
   <div id="tlHead" hidden></div>
+  <div id="cursors" aria-hidden="true"></div>
   <div id="selBox" hidden></div>
   <div id="inkCatch" hidden></div>
   <div class="inkbar" id="inkBar" hidden role="toolbar" aria-label="Marker">
@@ -1086,7 +1095,7 @@ function updateObjEl(el, c){
     (selCards.has(c.id) ? " sel" : "") + (dragSet.has(c.id) ? " dragging" : "") + (linkFrom === c.id ? " link-src" : "");
   el.style.width = (c.kind === "link" && c.disp === "pill") || c.kind === "text" ? "" : c.w + "px";
   if (c.kind === "text" && el._editing){ el._head.querySelector(".tx").style.fontSize = c.w + "px"; return; }
-  const key = JSON.stringify([c.kind, c.asset, c.url, c.disp, c.meta, c.emoji, c.kind === "emoji" || c.kind === "text" ? c.w : 0, c.kind === "text" ? c.title : 0]);
+  const key = JSON.stringify([c.kind, c.asset, c.url, c.disp, c.meta, c.emoji, c.kind === "emoji" || c.kind === "text" ? c.w : 0, c.kind === "text" ? liveOver(c, "title") : 0]);
   if (el._key === key) return;
   el._key = key;
   const h = el._head, del = `<button data-act="del" title="Remove" aria-label="Remove">✕</button>`;
@@ -1097,7 +1106,7 @@ function updateObjEl(el, c){
     getAsset(c.asset).then(src => { if (src) img.src = src; else h.innerHTML = `<div class="img-missing">Image not available here</div>`; });
   } else if (c.kind === "text"){
     h.innerHTML = `<span class="tx"></span>`;
-    const tx = h.querySelector(".tx"); tx.textContent = c.title; tx.style.fontSize = c.w + "px";
+    const tx = h.querySelector(".tx"); tx.textContent = liveOver(c, "title"); tx.style.fontSize = c.w + "px";
     el._tools.innerHTML = `<button data-act="smaller" title="Smaller" aria-label="Smaller text">A−</button><button data-act="bigger" title="Bigger" aria-label="Bigger text">A+</button><button data-act="edit" title="Edit text">Edit</button><button data-act="tocard" title="Turn this heading into a card">Card</button>${del}`;
   } else if (c.kind === "emoji"){
     h.innerHTML = `<span class="em"></span>`;
@@ -1165,8 +1174,9 @@ function updateCardEl(el, c){
     (selCards.has(c.id) ? " sel" : "") + (dragSet.has(c.id) ? " dragging" : "") +
     (linkFrom === c.id ? " link-src" : "") + (!c.body.trim() ? " empty-body" : "");
   el.style.width = c.w + "px";
-  if (!el._title.isContentEditable && el._title.textContent !== (c.title || "Untitled")) el._title.textContent = c.title || "Untitled";
-  if (!el._summary.isContentEditable && el._summary.textContent !== c.summary) el._summary.textContent = c.summary;
+  const lt = liveOver(c, "title"), lsu = liveOver(c, "summary"), lb = liveOver(c, "body");   // what someone else is typing right now
+  if (!el._title.isContentEditable && el._title.textContent !== (lt || "Untitled")) el._title.textContent = lt || "Untitled";
+  if (!el._summary.isContentEditable && el._summary.textContent !== lsu) el._summary.textContent = lsu;
   const pb = c.priority ? String(c.priority) : "";
   if (el._pb.textContent !== pb){ el._pb.textContent = pb; el._pb.style.setProperty("--pc", c.priority ? `var(--p${c.priority})` : "transparent"); el._pb.title = c.priority ? `Priority ${c.priority} (1 is highest)` : ""; }
   const chips = (board.columns || []).filter(col => c.fields[col.id]).map(col => [col.name, c.fields[col.id]]);
@@ -1179,10 +1189,10 @@ function updateCardEl(el, c){
   if (editing){
     if (el._mode !== "edit") buildEditor(el, c);
   } else if (el._bodyEditing){ /* typing in the detail: leave it alone */ }
-  else if (el._mode === "view" && el._body === c.body + "\u0000" + c.priority){ const oi = el._slot.querySelector(".owner-in"); if (oi && document.activeElement !== oi && oi.value !== (c.owner || "")) oi.value = c.owner || ""; }
-  else if (el._mode !== "view" || el._body !== c.body + "\u0000" + c.priority){
-    el._slot.innerHTML = `<div class="body">${prioHTML(c.priority)}${ownerHTML(c)}${md(c.body)}</div>`;
-    el._mode = "view"; el._body = c.body + "\u0000" + c.priority;
+  else if (el._mode === "view" && el._body === lb + "\u0000" + c.priority){ const oi = el._slot.querySelector(".owner-in"); if (oi && document.activeElement !== oi && oi.value !== (c.owner || "")) oi.value = c.owner || ""; }
+  else if (el._mode !== "view" || el._body !== lb + "\u0000" + c.priority){
+    el._slot.innerHTML = `<div class="body">${prioHTML(c.priority)}${ownerHTML(c)}${md(lb)}</div>`;
+    el._mode = "view"; el._body = lb + "\u0000" + c.priority;
   } else if (el._mode === "edit") markPrio(el, c.priority);
 }
 
@@ -1377,7 +1387,7 @@ function foldH(c, el){
   return el._foldH || h;
 }
 function measureItem(c, el){
-  return { id: c.id, kind: c.kind, x: c.x, y: c.y, w: el.offsetWidth, h: el.offsetHeight, ch: foldH(c, el) };
+  return { id: c.id, kind: c.kind, x: liveOver(c, "x"), y: liveOver(c, "y"), w: el.offsetWidth, h: el.offsetHeight, ch: foldH(c, el) };
 }
 // Given each card's resting (folded) position and its current height, where it shows on screen.
 function computeRender(items, dragging){
@@ -1404,6 +1414,7 @@ function layout(){
   if (!board) return;
   const items = board.cards.map(c => { const el = els.get(c.id); return el && measureItem(c, el); }).filter(Boolean);
   const ry = computeRender(items, dragSet);
+  if (dragSet.size) liveTick();
   for (const it of items){
     const y = ry.get(it.id), el = els.get(it.id);
     renderPos.set(it.id, { x: it.x, y, w: it.w, h: it.h });
@@ -1963,6 +1974,7 @@ function applyView(){
   vp.style.backgroundPosition = `${view.x}px ${view.y}px`;
   vp.style.backgroundSize = `${24 * view.s}px ${24 * view.s}px`;
   $("#zoomLabel").textContent = Math.round(view.s * 100) + "%";
+  if (live.peers.size) liveDrawCursors();
   if (selInks.size) drawInkSel();
   drawTimeline();
   clearTimeout(applyView.t);
@@ -2276,6 +2288,8 @@ function applyContent(nb){
   if (editingId && !getCard(editingId)) editingId = null;
   for (const id of [...selCards]) if (!getCard(id)) selCards.delete(id);
   undoStack = []; redoStack = []; updUndo();     // undo steps from before can't safely be replayed over other people's changes
+  for (const c of board.cards){ const v = {}; for (const f of LIVE_FIELDS) v[f] = c[f]; live.sent.set(c.id, v); }   // others' saved changes aren't ours to send live
+  liveReconcile();
   renderCards(); drawInk(); refreshSel(); drawTimeline();
 }
 const whoChanged = d => d.by && d.by !== editorName && d.by !== "someone" && d.by !== "migrated" ? d.by + "'s" : "the latest";
@@ -2291,6 +2305,7 @@ function mirrorLocal(){ if (!OFFLINE) ls.set("fb-backup", boardData); }   // las
 function markUnsaved(id, on){ if (OFFLINE) return; const u = ls.get("fb-unsaved", {}) || {}; if (on) u[id] = true; else delete u[id]; ls.set("fb-unsaved", u); }
 function markDirty(){
   if (!board || stopped) return;
+  liveTick();
   if (!dirty) markUnsaved(boardId, true);
   board.updatedAt = Date.now(); dirty = true; changeSeq++;
   boardData[boardId] = sanitizeBoard(serialize(board)); mirrorLocal();
@@ -2534,6 +2549,196 @@ $("#who").addEventListener("click", e => {
   });
 });
 
+/* ---------- live: see each other's pointers, typing and dragging ----------
+   Boards still save to GitHub as before; this only shows what other people are doing right now. It needs a
+   realtime relay (Supabase Realtime, configured in realtime.json next to the page) and turns itself off if
+   there isn't one. Everything sent is encrypted with a key made from the board's access key, so the relay
+   sees only scrambled data, and the room name is a hash, so it doesn't learn board ids either.
+   What other people type is only shown, never put into your copy of the board, so it can't be saved over
+   their work: their own save brings the real text a moment later. */
+const LIVE_FIELDS = ["title", "summary", "body", "x", "y"];
+const live = { conn: null, key: null, room: null, peers: new Map(), over: new Map(), sent: new Map(), curAt: 0, curPend: null, sendT: 0, cfg: undefined };
+const liveOver = (c, f) => { const o = live.over.get(c.id); return o && f in o ? o[f] : c[f]; };
+async function liveConfig(){
+  if (live.cfg !== undefined) return live.cfg;
+  live.cfg = null;
+  if (/[?&]live=local\b/.test(location.search)) return (live.cfg = { local: true });   // testing: tabs of one browser talk to each other
+  if (OFFLINE) return null;
+  try { const r = await fetch("realtime.json", { cache: "no-store" }); if (r.ok){ const j = await r.json(); if (/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(j.url) && typeof j.key === "string") live.cfg = j; } } catch {}
+  return live.cfg;
+}
+async function liveKeys(id){
+  const secret = new TextEncoder().encode((GH && GH.token) || "offline-test");
+  const base = await crypto.subtle.importKey("raw", secret, "HKDF", false, ["deriveKey", "deriveBits"]);
+  const key = await crypto.subtle.deriveKey({ name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode("whiteboard-live"), info: new TextEncoder().encode("key") }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const bits = await crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: new TextEncoder().encode("whiteboard-live"), info: new TextEncoder().encode("room:" + id) }, base, 128);
+  return { key, room: "wb-" + [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, "0")).join("") };
+}
+async function liveSeal(obj){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, live.key, new TextEncoder().encode(JSON.stringify(obj))));
+  const b = u => btoa(String.fromCharCode(...u));
+  return { i: b(iv), d: b(ct) };
+}
+async function liveOpen(m){
+  const u = s => Uint8Array.from(atob(s), ch => ch.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: u(m.i) }, live.key, u(m.d))));
+}
+/* Two ways to reach the others: Supabase Realtime (a websocket using the Phoenix channel protocol), or, for
+   testing, a BroadcastChannel between tabs. Both just pass encrypted messages around a room. */
+function liveSupabase(cfg, room, onMsg, onState){
+  let ws, ref = 0, hb = 0, closed = false, retry = 0, joined = false;
+  const topic = "realtime:" + room;
+  const send = o => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(o)); };
+  const open = () => {
+    ws = new WebSocket(cfg.url.replace(/^https/, "wss") + "/realtime/v1/websocket?apikey=" + encodeURIComponent(cfg.key) + "&vsn=1.0.0");
+    ws.onopen = () => {
+      retry = 0;
+      send({ topic, event: "phx_join", ref: String(++ref), join_ref: "1", payload: { config: { broadcast: { self: false, ack: false }, presence: { key: "" }, private: false }, access_token: cfg.key } });
+      clearInterval(hb); hb = setInterval(() => send({ topic: "phoenix", event: "heartbeat", payload: {}, ref: String(++ref) }), 25000);
+    };
+    ws.onmessage = e => {
+      let m; try { m = JSON.parse(e.data); } catch { return; }
+      if (m.topic !== topic) return;
+      if (m.event === "phx_reply" && m.payload && m.payload.status === "ok" && !joined){ joined = true; onState(true); }
+      else if (m.event === "broadcast" && m.payload && m.payload.payload) onMsg(m.payload.payload);
+    };
+    ws.onclose = () => { clearInterval(hb); joined = false; onState(false); if (!closed) setTimeout(open, Math.min(30000, 1000 * 2 ** retry++)); };
+    ws.onerror = () => { try { ws.close(); } catch {} };
+  };
+  open();
+  return {
+    send: payload => send({ topic, event: "broadcast", ref: String(++ref), join_ref: "1", payload: { type: "broadcast", event: "m", payload } }),
+    close: () => { closed = true; clearInterval(hb); try { send({ topic, event: "phx_leave", payload: {}, ref: String(++ref) }); ws.close(); } catch {} }
+  };
+}
+function liveLocal(room, onMsg, onState){
+  const bc = new BroadcastChannel(room);
+  bc.onmessage = e => onMsg(e.data);
+  setTimeout(() => onState(true), 0);
+  return { send: p => bc.postMessage(p), close: () => bc.close() };
+}
+async function liveJoin(id){
+  liveLeave();
+  const cfg = await liveConfig(); if (!cfg || boardId !== id) return;
+  const { key, room } = await liveKeys(id); if (boardId !== id) return;
+  live.key = key; live.room = room; live.sent.clear();
+  for (const c of board.cards){ const v = {}; for (const f of LIVE_FIELDS) v[f] = c[f]; live.sent.set(c.id, v); }
+  const onMsg = async raw => { let m; try { m = await liveOpen(raw); } catch { return; } if (live.room === room) liveReceive(m); };
+  const onState = up => { if (up && live.room === room) liveSend({ t: "hi" }, true); };
+  live.conn = cfg.local ? liveLocal(room, onMsg, onState) : liveSupabase(cfg, room, onMsg, onState);
+}
+function liveLeave(){
+  if (live.conn){ try { liveSend({ t: "bye" }, true); } catch {} const c = live.conn; setTimeout(() => c.close(), 50); }
+  live.conn = null; live.room = null; live.peers.clear(); live.over.clear(); live.sent.clear();
+  liveDrawCursors(); liveTags();
+}
+async function liveSend(m, now){
+  if (!live.conn) return;
+  m.c = clientId; m.n = firstName(editorName) || "Someone";
+  try { live.conn.send(await liveSeal(m)); } catch {}
+}
+/* Pointer: sent at most about 12 times a second, in board coordinates. */
+function liveCursor(e){
+  if (!live.conn || !board) return;
+  const r = vp.getBoundingClientRect();
+  live.curPend = { x: Math.round((e.clientX - r.left - view.x) / view.s), y: Math.round((e.clientY - r.top - view.y) / view.s) };
+  const wait = 80 - (Date.now() - live.curAt);
+  if (wait <= 0){ live.curAt = Date.now(); liveSend({ t: "cur", ...live.curPend }); live.curPend = null; }
+  else if (!live.curT) live.curT = setTimeout(() => { live.curT = 0; if (live.curPend){ live.curAt = Date.now(); liveSend({ t: "cur", ...live.curPend }); live.curPend = null; } }, wait);
+}
+/* Changes to cards (text as it's typed, position while dragging): sent a few times a second. */
+function liveTick(){
+  if (!live.conn || !board || live.tickT) return;
+  live.tickT = setTimeout(() => {
+    live.tickT = 0; if (!live.conn || !board) return;
+    const ch = [];
+    for (const c of board.cards){
+      const prev = live.sent.get(c.id), cur = {};
+      for (const f of LIVE_FIELDS) cur[f] = c[f];
+      if (!prev){ live.sent.set(c.id, cur); continue; }       // first look at a card: remember it, nothing to send
+      const diff = {}; let any = false;
+      for (const f of LIVE_FIELDS) if (prev[f] !== cur[f]){ diff[f] = cur[f]; any = true; }
+      if (any){ ch.push({ id: c.id, ...diff, a: dragSet.has(c.id) ? "move" : "type" }); live.sent.set(c.id, cur); }
+    }
+    if (ch.length) liveSend({ t: "ed", ch: ch.slice(0, 30) });
+  }, 120);
+}
+function liveReceive(m){
+  if (!m || m.c === clientId || typeof m.c !== "string") return;
+  const now = Date.now();
+  let p = live.peers.get(m.c);
+  if (m.t === "bye"){ live.peers.delete(m.c); liveDrawCursors(); return; }
+  if (!p){ p = { name: m.n, at: now }; live.peers.set(m.c, p); if (m.t !== "hi") liveSend({ t: "hi" }); }
+  p.name = String(m.n || "Someone").slice(0, 20); p.at = now;
+  if (m.t === "hi" && !m.r) liveSend({ t: "hi", r: 1 });             // say hello back so both see each other
+  if (m.t === "cur" && m.x === null){ p.x = null; liveDrawCursors(); }
+  else if (m.t === "cur" && typeof m.x === "number" && typeof m.y === "number" && isFinite(m.x) && isFinite(m.y)){ p.x = +m.x; p.y = +m.y; p.curAt = now; liveDrawCursors(); }
+  if (m.t === "ed" && Array.isArray(m.ch) && board){
+    let moved = false;
+    for (const ch of m.ch){
+      const c = ch && getCard(ch.id); if (!c) continue;
+      if (editingId === c.id || (els.get(c.id) && (els.get(c.id)._bodyEditing || els.get(c.id)._editing))) continue;   // you're editing it yourself
+      const o = live.over.get(c.id) || {};
+      for (const f of LIVE_FIELDS) if (f in ch){
+        if ((f === "x" || f === "y") ? isFinite(ch[f]) : typeof ch[f] === "string"){ o[f] = f === "x" || f === "y" ? Math.round(ch[f]) : ch[f].slice(0, f === "body" ? 40000 : 1000); if (f === "x" || f === "y") moved = true; }
+      }
+      o.who = p.name; o.whoId = m.c; o.act = ch.a === "move" ? "move" : "type"; o.at = now;
+      live.over.set(c.id, o);
+      const el = els.get(c.id); if (el){ el._key = null; updateCardEl(el, c); }
+    }
+    if (moved) scheduleLayout();
+    liveTags();
+  }
+}
+/* Once someone's save arrives (or they've gone quiet for a while), drop what was only being shown. */
+function liveReconcile(){
+  const now = Date.now(); let any = false;
+  for (const [id, o] of live.over){
+    const c = getCard(id);
+    if (!c){ live.over.delete(id); any = true; continue; }
+    for (const f of LIVE_FIELDS) if (f in o && o[f] === c[f]) delete o[f];
+    if (!LIVE_FIELDS.some(f => f in o) || now - o.at > 15000){ live.over.delete(id); any = true; const el = els.get(id); if (el){ el._key = null; updateCardEl(el, c); } }
+  }
+  if (any) scheduleLayout();
+  liveTags();
+}
+function liveTags(){
+  const now = Date.now();
+  for (const [id, el] of els){
+    const o = live.over.get(id), busy = o && now - o.at < 4000;
+    el.classList.toggle("live-busy", !!busy);
+    let tag = el.querySelector(":scope > .live-tag");
+    if (busy){
+      el.style.setProperty("--live", `hsl(${hue(o.who || "")} 60% 45%)`);
+      if (!tag){ tag = document.createElement("span"); tag.className = "live-tag"; el.appendChild(tag); }
+      const t = o.who + (o.act === "move" ? " is moving this" : " is typing…"); if (tag.textContent !== t) tag.textContent = t;
+    } else if (tag) tag.remove();
+  }
+}
+const CURSOR_SVG = `<svg viewBox="0 0 18 18"><path d="M2 1.5l13 6.2-5.6 1.6-2.4 5.5z" fill="var(--c)" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>`;
+function liveDrawCursors(){
+  const box = $("#cursors"); if (!box) return;
+  const now = Date.now(), want = new Set();
+  for (const [cid, p] of live.peers){
+    if (now - p.at > 30000){ live.peers.delete(cid); continue; }
+    if (p.x == null || mode !== "board") continue;
+    want.add(cid);
+    let el = box.querySelector(`[data-c="${cid}"]`);
+    if (!el){ el = document.createElement("div"); el.className = "cur"; el.dataset.c = cid; el.innerHTML = CURSOR_SVG + "<span></span>"; box.appendChild(el); }
+    el.style.setProperty("--c", `hsl(${hue(p.name)} 60% 45%)`);
+    const sp = el.querySelector("span"); if (sp.textContent !== p.name) sp.textContent = p.name;
+    el.style.transform = `translate(${Math.round(view.x + p.x * view.s)}px, ${Math.round(view.y + p.y * view.s)}px)`;
+    el.classList.toggle("idle", now - (p.curAt || 0) > 10000);
+  }
+  for (const el of [...box.children]) if (!want.has(el.dataset.c)) el.remove();
+}
+setInterval(() => { if (!live.conn) return; liveSend({ t: "hi", r: 1 }); liveReconcile(); liveDrawCursors(); }, 10000);
+setInterval(() => { if (live.over.size) liveReconcile(); }, 1500);
+vp.addEventListener("pointermove", liveCursor);
+vp.addEventListener("pointerleave", () => { if (live.conn) liveSend({ t: "cur", x: null, y: null }); });
+addEventListener("pagehide", () => { if (live.conn) liveSend({ t: "bye" }, true); });
+
 /* ---------- boards ---------- */
 async function loadAllBoards(){
   if (OFFLINE){
@@ -2568,6 +2773,7 @@ async function openBoard(id){
   boardId = id; board = clone(boardData[id]);
   undoStack = []; redoStack = []; updUndo(); selected = null; editingId = null; dirty = false;
   presence = {}; presenceFor = null; lastBeat = 0; renderPresence(); setTimeout(() => heartbeat(), 400);
+  liveJoin(id);
   ls.set("fb-last", id);
   hidePicker();
   if (location.hash.slice(1) !== id) history.replaceState(null, "", "#" + id);
@@ -2591,7 +2797,7 @@ async function createBoard(data, focusName){
 }
 function showEmpty(){
   if (boardId && !OFFLINE && GH) heartbeat(true);
-  clearCards(); board = null; boardId = null; renderPresence();
+  clearCards(); board = null; boardId = null; renderPresence(); liveLeave();
   $("#boardName").value = ""; $("#boardName").disabled = true;
   edgeG.innerHTML = ""; edgeDel.hidden = true;
   if (location.hash) history.replaceState(null, "", location.pathname + location.search);
